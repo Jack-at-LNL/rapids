@@ -28,6 +28,9 @@ olog_group: "olog"
 
 # Network configuration
 olog_port: 8080
+# firewalld zones in which the Olog port is opened
+olog_firewall_zones:
+  - public
 olog_server_url: "http://{{ inventory_hostname }}:{{ olog_port }}/Olog"
 
 # Administrator credentials
@@ -42,6 +45,11 @@ olog_elasticsearch_cluster_name: "olog-cluster"
 olog_elasticsearch_node_name: "{{ inventory_hostname }}"
 olog_elasticsearch_http_port: 9200
 olog_elasticsearch_transport_port: 9300
+# ElasticSearch version (8.11.0 is the version in production use with Olog 5.1.2)
+olog_elasticsearch_version: "8.11.0"
+# Java heap for ElasticSearch; at most half of the machine memory.
+# 1g suits a small test machine; production sites typically use 2g or more.
+olog_elasticsearch_heap_size: "1g"
 
 # MongoDB configuration
 olog_mongodb_port: 27017
@@ -56,6 +64,10 @@ olog_cleanup_user: false
 olog_enable_backup: true
 olog_backup_dir: "/backup/olog"
 olog_backup_retention_days: 30
+# Daily backup time (cron fields): 02:00 every day
+olog_backup_cron_minute: "0"
+olog_backup_cron_hour: "2"
+olog_backup_cron_day: "*"
 
 # Initial data seeding
 olog_seed_initial_data: true
