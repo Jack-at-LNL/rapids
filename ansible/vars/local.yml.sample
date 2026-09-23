@@ -19,3 +19,33 @@ m_stream: true
 # archiver_appliance: true
 # docker: true
 # bluesky: true
+
+# ---------------------------------------------------------------------------
+# RAPIDS roles (https://github.com/Jack-at-LNL/rapids)
+# ---------------------------------------------------------------------------
+# system_time: true             # NTP synchronisation with chrony
+# olog_server: true             # Olog electronic logbook server (needs phoebus: true for Maven)
+# olog_client_config: true      # Phoebus: Olog logbook (Ctrl+L)   - needs phoebus: true
+# archiver_client_config: true  # Phoebus: Archiver data (Ctrl+D)  - needs phoebus: true
+
+# Project branding
+# rapids_project_name: "My Project"
+# rapids_author_name: "Your Name"
+# rapids_author_email: "your.email@example.org"
+# rapids_institution: "Your Institution"
+
+# Time servers (first entry is primary, the others are fallbacks)
+# ntp_servers:
+#   - ntp.example.org
+#   - pool.ntp.org
+
+# Service endpoints (defaults: this machine)
+# olog_server_url: "http://olog.example.org:8080/Olog"
+# archappl_host: archiver.example.org
+
+# Olog administrator password - REQUIRED when olog_server is true.
+# Do not write it in clear text: encrypt it with
+#   ansible-vault encrypt_string 'YourPassword' --name 'olog_admin_password'
+# paste the result here, and run:  vm-setup/update.sh --ask-vault-pass
+# olog_admin_password: !vault |
+#   ...

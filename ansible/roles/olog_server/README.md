@@ -223,4 +223,4 @@ GPL-3.0-or-later
 
 Mauro Giacchini  
 INFN Laboratori Nazionali di Legnaro  
-Email: https://github.com/Jack-at-LNL/rapids/issues
+Contact: https://github.com/Jack-at-LNL/rapids/issues
