@@ -1,0 +1,105 @@
+# ============================================================================
+# RAPIDS - Olog Server Cleanup
+# 
+# Description:
+#   Removes existing Olog installation to ensure clean deployment.
+#   Follows RAPIDS philosophy: system reaches exact state from local.yml
+#   regardless of previous installation state.
+#
+# Note:
+#   ElasticSearch and MongoDB data directories are preserved to maintain
+#   keystores and avoid data loss during updates.
+# ============================================================================
+
+- name: Display cleanup message
+  debug:
+    msg: "Cleaning up any existing Olog installation..."
+
+- name: Stop services
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+  become: yes
+  failed_when: false
+  ignore_errors: yes
+  loop:
+    - olog
+    - elasticsearch
+    - mongod
+
+- name: Wait for services to stop
+  pause:
+    seconds: 5
+
+- name: Disable Olog service
+  systemd:
+    name: olog
+    enabled: no
+  become: yes
+  failed_when: false
+  ignore_errors: yes
+
+- name: Remove Olog systemd service file
+  file:
+    path: /etc/systemd/system/olog.service
+    state: absent
+  become: yes
+
+- name: Remove backup scripts
+  file:
+    path: "{{ item }}"
+    state: absent
+  become: yes
+  loop:
+    - /usr/local/bin/backup-olog.sh
+    - /etc/cron.d/olog-backup
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  become: yes
+
+- name: Remove Olog directories
+  file:
+    path: "{{ item }}"
+    state: absent
+  become: yes
+  loop:
+    - "{{ olog_install_dir }}"
+    - "{{ olog_data_dir }}"
+    - "{{ olog_log_dir }}"
+
+- name: Remove temporary build directories
+  file:
+    path: "{{ item }}"
+    state: absent
+  become: yes
+  loop:
+    - /tmp/olog-build
+    - /tmp/olog-test
+    - /tmp/olog-manual-build
+    - /tmp/jar-inspect
+
+- name: Remove Olog user
+  user:
+    name: "{{ olog_user }}"
+    state: absent
+    remove: yes
+  become: yes
+  when: olog_cleanup_user | default(false) | bool
+
+- name: Remove Olog group
+  group:
+    name: "{{ olog_group }}"
+    state: absent
+  become: yes
+  when: olog_cleanup_user | default(false) | bool
+
+- name: Verify cleanup completed
+  debug:
+    msg: 
+      - "✅ Olog cleanup completed"
+      - "Services stopped and disabled"
+      - "Installation directories removed"
+      - "ElasticSearch/MongoDB data preserved"
+      - "Ready for fresh installation"

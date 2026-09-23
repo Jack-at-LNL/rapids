@@ -1,0 +1,143 @@
+# ============================================================================
+# RAPIDS - Install and Configure ElasticSearch for Olog
+# ============================================================================
+
+- name: Check if ElasticSearch RPM is installed
+  command: rpm -q elasticsearch
+  register: elasticsearch_rpm_installed
+  failed_when: false
+  changed_when: false
+
+- name: Download ElasticSearch RPM
+  get_url:
+    url: "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-{{ olog_elasticsearch_version }}-x86_64.rpm"
+    dest: "/tmp/elasticsearch-{{ olog_elasticsearch_version }}.rpm"
+  when: elasticsearch_rpm_installed.rc != 0
+
+- name: Install ElasticSearch
+  yum:
+    name: "/tmp/elasticsearch-{{ olog_elasticsearch_version }}.rpm"
+    state: present
+    disable_gpg_check: yes
+  become: yes
+  when: elasticsearch_rpm_installed.rc != 0
+
+- name: Verify elasticsearch user exists
+  user:
+    name: elasticsearch
+    state: present
+    system: yes
+    shell: /sbin/nologin
+    home: /usr/share/elasticsearch
+  become: yes
+
+- name: Verify elasticsearch group exists
+  group:
+    name: elasticsearch
+    state: present
+    system: yes
+  become: yes
+
+- name: Create ElasticSearch data directory
+  file:
+    path: /var/lib/elasticsearch
+    state: directory
+    owner: elasticsearch
+    group: elasticsearch
+    mode: '0755'
+  become: yes
+
+- name: Create ElasticSearch log directory
+  file:
+    path: /var/log/elasticsearch
+    state: directory
+    owner: elasticsearch
+    group: elasticsearch
+    mode: '0755'
+  become: yes
+
+- name: Configure ElasticSearch
+  template:
+    src: elasticsearch.yml.j2
+    dest: /etc/elasticsearch/elasticsearch.yml
+    owner: elasticsearch
+    group: elasticsearch
+    mode: '0660'
+  become: yes
+
+- name: Create JVM options directory
+  file:
+    path: /etc/elasticsearch/jvm.options.d
+    state: directory
+    owner: elasticsearch
+    group: elasticsearch
+    mode: '0755'
+  become: yes
+
+- name: Configure ElasticSearch heap size
+  copy:
+    content: |
+      -Xms{{ olog_elasticsearch_heap_size }}
+      -Xmx{{ olog_elasticsearch_heap_size }}
+    dest: /etc/elasticsearch/jvm.options.d/heap.options
+    owner: elasticsearch
+    group: elasticsearch
+    mode: '0660'
+  become: yes
+
+- name: Fix ElasticSearch configuration directory permissions
+  file:
+    path: /etc/elasticsearch
+    state: directory
+    owner: root
+    group: elasticsearch
+    mode: '0750'
+  become: yes
+
+- name: Fix ElasticSearch keystore permissions
+  file:
+    path: /etc/elasticsearch/elasticsearch.keystore
+    owner: elasticsearch
+    group: elasticsearch
+    mode: '0660'
+  become: yes
+  ignore_errors: yes
+
+- name: Remove SSL passwords from keystore
+  shell: |
+    /usr/share/elasticsearch/bin/elasticsearch-keystore remove xpack.security.transport.ssl.keystore.secure_password || true
+    /usr/share/elasticsearch/bin/elasticsearch-keystore remove xpack.security.transport.ssl.truststore.secure_password || true
+    /usr/share/elasticsearch/bin/elasticsearch-keystore remove xpack.security.http.ssl.keystore.secure_password || true
+  become: yes
+  become_user: elasticsearch
+  ignore_errors: yes
+
+- name: Enable and start ElasticSearch service
+  systemd:
+    name: elasticsearch
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  become: yes
+
+- name: Wait for ElasticSearch to be ready
+  wait_for:
+    host: localhost
+    port: 9200
+    delay: 10
+    timeout: 120
+  become: yes
+
+- name: Verify ElasticSearch is running
+  uri:
+    url: http://localhost:9200
+    method: GET
+    status_code: 200
+  register: elasticsearch_health
+  retries: 5
+  delay: 10
+  until: elasticsearch_health.status == 200
+
+- name: Display ElasticSearch cluster info
+  debug:
+    msg: "ElasticSearch cluster '{{ elasticsearch_health.json.cluster_name }}' is running version {{ elasticsearch_health.json.version.number }}"

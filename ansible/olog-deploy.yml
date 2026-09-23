@@ -1,0 +1,68 @@
+# Olog Deployment Playbook - RAPIDS Architecture
+
+- name: Deploy Olog Electronic Logbook System
+  hosts: all
+  become: no
+  
+  tasks:
+    # Olog Server Installation
+    - name: Install and configure Olog server
+      include_role:
+        name: olog_server
+      tags:
+        - olog_server
+        - olog
+    
+    # Fetch logbooks from server
+    - name: Fetch logbooks from Olog server
+      uri:
+        url: "http://127.0.0.1:{{ olog_port | default(8080) }}/Olog/logbooks"
+        method: GET
+        user: "{{ olog_admin_user | default('admin') }}"
+        password: "{{ olog_admin_password }}"
+        force_basic_auth: yes
+        return_content: yes
+      register: olog_logbooks_response
+      failed_when: false
+      tags:
+        - olog-client
+        - olog
+    
+    - name: Parse logbooks list
+      set_fact:
+        olog_logbooks_list: "{{ olog_logbooks_response.json | map(attribute='name') | list }}"
+      when: olog_logbooks_response.status == 200
+      tags:
+        - olog-client
+        - olog
+    
+    # Fetch tags from server
+    - name: Fetch tags from Olog server
+      uri:
+        url: "http://127.0.0.1:{{ olog_port | default(8080) }}/Olog/tags"
+        method: GET
+        user: "{{ olog_admin_user | default('admin') }}"
+        password: "{{ olog_admin_password }}"
+        force_basic_auth: yes
+        return_content: yes
+      register: olog_tags_response
+      failed_when: false
+      tags:
+        - olog-client
+        - olog
+    
+    - name: Parse tags list
+      set_fact:
+        olog_tags_list: "{{ olog_tags_response.json | map(attribute='name') | list }}"
+      when: olog_tags_response.status == 200
+      tags:
+        - olog-client
+        - olog
+    
+    # Configure Phoebus Client
+    - name: Configure Phoebus Olog client
+      include_role:
+        name: olog-client-config
+      tags:
+        - olog-client
+        - olog

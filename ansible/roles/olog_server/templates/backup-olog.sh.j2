@@ -1,0 +1,44 @@
+#!/bin/bash
+# ============================================================================
+# RAPIDS - Olog Backup Script
+#
+# Description:
+#   Automated backup of Olog data (MongoDB and ElasticSearch).
+#   Manages backup retention based on configured period.
+# ============================================================================
+
+set -e
+
+BACKUP_DIR="{{ olog_backup_dir }}"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_PATH="${BACKUP_DIR}/${TIMESTAMP}"
+
+echo "Starting Olog backup: ${TIMESTAMP}"
+
+# Create backup directory
+mkdir -p "${BACKUP_PATH}"
+
+# Backup MongoDB
+echo "Backing up MongoDB..."
+mongodump --host localhost --port {{ olog_mongodb_port }} --out "${BACKUP_PATH}/mongodb"
+
+# Backup ElasticSearch indices
+echo "Backing up ElasticSearch..."
+curl -XPUT "http://localhost:{{ olog_elasticsearch_http_port }}/_snapshot/olog_backup" \
+  -H 'Content-Type: application/json' \
+  -d "{\"type\": \"fs\", \"settings\": {\"location\": \"${BACKUP_PATH}/elasticsearch\"}}" || true
+
+# Create backup manifest
+cat > "${BACKUP_PATH}/manifest.txt" << MANIFEST
+Olog Backup Manifest
+====================
+Timestamp: ${TIMESTAMP}
+MongoDB Port: {{ olog_mongodb_port }}
+ElasticSearch Port: {{ olog_elasticsearch_http_port }}
+MANIFEST
+
+# Remove old backups
+echo "Cleaning up old backups (retention: {{ olog_backup_retention_days }} days)..."
+find "${BACKUP_DIR}" -maxdepth 1 -type d -mtime +{{ olog_backup_retention_days }} -exec rm -rf {} \;
+
+echo "Backup completed: ${BACKUP_PATH}"

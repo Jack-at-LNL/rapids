@@ -11,6 +11,34 @@
 #archiver_appliance: true
 #bluesky: true
 
+# RAPIDS roles
+#system_time: true             # NTP synchronisation with chrony
+#olog_server: true             # Olog electronic logbook server
+#olog_client_config: true      # Phoebus: Olog logbook (Ctrl+L)   - needs phoebus: true
+#archiver_client_config: true  # Phoebus: Archiver data (Ctrl+D)  - needs phoebus: true
+
+# RAPIDS project branding
+#rapids_project_name: "My Project"
+#rapids_author_name: "Your Name"
+#rapids_author_email: "your.email@example.org"
+#rapids_institution: "Your Institution"
+
+# RAPIDS time servers (first entry is primary, the others are fallbacks)
+#ntp_servers:
+#  - ntp.example.org
+#  - pool.ntp.org
+
+# RAPIDS service endpoints
+#olog_server_host: olog.example.org
+#archappl_host: archiver.example.org
+
+# RAPIDS Olog administrator password - REQUIRED when olog_server is true.
+# Do not write it here in clear text: encrypt it with
+#   ansible-vault encrypt_string 'YourPassword' --name 'olog_admin_password'
+# and paste the result below.
+#olog_admin_password: !vault |
+#  ...
+
 # List the EPICS modules that will be built
 m_base: true
 #m_p4p: true

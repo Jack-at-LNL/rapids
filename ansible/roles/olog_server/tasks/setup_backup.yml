@@ -1,0 +1,109 @@
+# ============================================================================
+# RAPIDS - Olog Backup System Setup
+# ============================================================================
+
+- name: Create backup directory
+  file:
+    path: "{{ olog_backup_dir }}"
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+  become: yes
+
+- name: Create scripts directory
+  file:
+    path: "{{ olog_install_dir }}/scripts"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  become: yes
+
+- name: Install backup script
+  template:
+    src: scripts/backup-now.sh.j2
+    dest: "{{ olog_install_dir }}/scripts/backup-now.sh"
+    mode: '0755'
+    owner: root
+    group: root
+  become: yes
+
+- name: Install restore script
+  template:
+    src: scripts/restore-backup.sh.j2
+    dest: "{{ olog_install_dir }}/scripts/restore-backup.sh"
+    mode: '0755'
+    owner: root
+    group: root
+  become: yes
+
+- name: Install manage-logbooks script
+  template:
+    src: scripts/manage-logbooks.sh.j2
+    dest: "{{ olog_install_dir }}/scripts/manage-logbooks.sh"
+    mode: '0755'
+    owner: root
+    group: root
+  become: yes
+
+- name: Install manage-tags script
+  template:
+    src: scripts/manage-tags.sh.j2
+    dest: "{{ olog_install_dir }}/scripts/manage-tags.sh"
+    mode: '0755'
+    owner: root
+    group: root
+  become: yes
+
+- name: Create README for scripts
+  copy:
+    content: |
+      # Olog Maintenance Scripts
+      
+      Installed by RAPIDS Ansible deployment
+      
+      ## Available Scripts
+      
+      - backup-now.sh          - Manual backup
+      - restore-backup.sh      - Restore from backup
+      - manage-logbooks.sh     - Logbook management
+      - manage-tags.sh         - Tag management
+      
+      ## Usage
+      
+      See main documentation: /home/epics-dev/training/docs/README-OLOG.md
+    dest: "{{ olog_install_dir }}/scripts/README.txt"
+    mode: '0644'
+  become: yes
+
+- name: Create backup cron job
+  cron:
+    name: "Olog daily backup"
+    minute: "{{ olog_backup_cron_minute }}"
+    hour: "{{ olog_backup_cron_hour }}"
+    day: "{{ olog_backup_cron_day }}"
+    job: "{{ olog_install_dir }}/scripts/backup-now.sh >> /var/log/olog/backup.log 2>&1"
+    user: root
+    state: present
+  become: yes
+
+- name: Create backup cleanup cron job
+  cron:
+    name: "Olog backup cleanup"
+    minute: "0"
+    hour: "3"
+    day: "*"
+    job: "find {{ olog_backup_dir }} -name '*.tar.gz' -mtime +{{ olog_backup_retention_days }} -delete"
+    user: root
+    state: present
+  become: yes
+
+- name: Display backup setup complete
+  debug:
+    msg:
+      - "✅ Backup system configured"
+      - "Scripts: {{ olog_install_dir }}/scripts/"
+      - "Backup dir: {{ olog_backup_dir }}"
+      - "Schedule: Daily at {{ olog_backup_cron_hour }}:{{ olog_backup_cron_minute }}"
+      - "Retention: {{ olog_backup_retention_days }} days"

@@ -1,0 +1,36 @@
+---
+# Olog Configuration Update Playbook
+# 
+# This playbook ONLY updates Olog configuration without reinstalling services.
+# Use this when you add/remove logbooks or tags and need to update Phoebus clients.
+#
+# Usage:
+#   ansible-playbook -i hosts olog-update-config.yml
+
+- name: Update Olog Client Configuration
+  hosts: localhost
+  become: yes
+  
+  vars_files:
+    - group_vars/all.yml
+    - group_vars/local.yml
+  
+  pre_tasks:
+    - name: Display update information
+      debug:
+        msg:
+          - "Updating Phoebus Olog client configuration only"
+          - "No server components will be modified"
+
+  roles:
+    - role: olog-client-config
+      when: olog_client_config | default(false) | bool
+      tags:
+        - olog-client
+
+  post_tasks:
+    - name: Display update summary
+      debug:
+        msg:
+          - "✅ Olog client configuration updated"
+          - "Restart Phoebus to apply changes"

@@ -1,0 +1,140 @@
+# ============================================================================
+# RAPIDS - MongoDB Installation with CPU Compatibility Detection
+# 
+# Description:
+#   Installs MongoDB with automatic version selection based on CPU
+#   instruction set support. Systems without AVX instructions use
+#   MongoDB 4.4 from RHEL 8 repository (binary compatible with AlmaLinux 9).
+# ============================================================================
+
+- name: Check CPU capabilities
+  shell: grep -q avx /proc/cpuinfo && echo "avx" || echo "no-avx"
+  register: cpu_avx_check
+  changed_when: false
+
+- name: Set MongoDB version based on CPU capabilities
+  set_fact:
+    mongodb_version: "{{ '4.4' if 'no-avx' in cpu_avx_check.stdout else '7.0' }}"
+
+- name: Determine RHEL version for MongoDB repository
+  set_fact:
+    mongodb_rhel_version: "{{ '8' if mongodb_version == '4.4' else '$releasever' }}"
+
+- name: Display MongoDB version selection
+  debug:
+    msg:
+      - "CPU AVX support: {{ cpu_avx_check.stdout }}"
+      - "Installing MongoDB: {{ mongodb_version }}"
+      - "Using RHEL {{ mongodb_rhel_version }} repository"
+
+- name: Add MongoDB repository
+  yum_repository:
+    name: mongodb-org
+    description: "MongoDB Repository"
+    baseurl: "https://repo.mongodb.org/yum/redhat/{{ mongodb_rhel_version }}/mongodb-org/{{ mongodb_version }}/x86_64/"
+    gpgcheck: yes
+    gpgkey: "https://www.mongodb.org/static/pgp/server-{{ mongodb_version }}.asc"
+    enabled: yes
+  become: yes
+
+- name: Install MongoDB
+  yum:
+    name: mongodb-org
+    state: present
+  become: yes
+
+- name: Create MongoDB data directory
+  file:
+    path: /var/lib/mongo
+    state: directory
+    owner: mongod
+    group: mongod
+    mode: '0755'
+  become: yes
+
+- name: Create MongoDB log directory
+  file:
+    path: /var/log/mongodb
+    state: directory
+    owner: mongod
+    group: mongod
+    mode: '0755'
+  become: yes
+
+- name: Set ownership on MongoDB directories
+  file:
+    path: "{{ item }}"
+    owner: mongod
+    group: mongod
+    recurse: yes
+  become: yes
+  loop:
+    - /var/lib/mongo
+    - /var/log/mongodb
+
+- name: Restore SELinux context
+  command: restorecon -R /var/lib/mongo
+  become: yes
+  changed_when: false
+
+- name: Configure MongoDB
+  template:
+    src: mongod.conf.j2
+    dest: /etc/mongod.conf
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: restart mongodb
+
+- name: Disable Transparent Huge Pages via rc.local
+  lineinfile:
+    path: /etc/rc.d/rc.local
+    line: "{{ item }}"
+    create: yes
+  become: yes
+  loop:
+    - "echo never > /sys/kernel/mm/transparent_hugepage/enabled"
+    - "echo never > /sys/kernel/mm/transparent_hugepage/defrag"
+
+- name: Ensure rc.local is executable
+  file:
+    path: /etc/rc.d/rc.local
+    mode: '0755'
+  become: yes
+
+- name: Disable THP immediately
+  shell: |
+    echo never > /sys/kernel/mm/transparent_hugepage/enabled
+    echo never > /sys/kernel/mm/transparent_hugepage/defrag
+  become: yes
+  changed_when: false
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  become: yes
+
+- name: Enable and start MongoDB service
+  systemd:
+    name: mongod
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  become: yes
+
+- name: Wait for MongoDB to start
+  wait_for:
+    port: "{{ olog_mongodb_port }}"
+    delay: 5
+    timeout: 60
+
+- name: Verify MongoDB is running
+  command: mongo --eval "db.version()"
+  register: mongodb_version_check
+  changed_when: false
+  failed_when: false
+
+- name: Display MongoDB status
+  debug:
+    msg: "MongoDB {{ mongodb_version }} is running successfully"

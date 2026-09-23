@@ -1,0 +1,90 @@
+# ============================================================================
+# RAPIDS - Olog Server Installation
+# 
+# Description:
+#   Main orchestration for Olog electronic logbook deployment.
+#   Follows RAPIDS declarative architecture: running update.sh brings
+#   the system to the exact state defined in local.yml.
+# ============================================================================
+
+- name: Display Olog server installation start
+  debug:
+    msg: 
+      - "Starting Olog Server installation"
+      - "Version: {{ olog_version }}"
+      - "Install directory: {{ olog_install_dir }}"
+
+- name: Check that an Olog administrator password has been provided
+  ansible.builtin.assert:
+    that:
+      - olog_admin_password is defined
+      - olog_admin_password | string | length > 0
+      - olog_admin_password != 'adminPass'   # audit: allow - rejects the public demo value
+    fail_msg: >-
+      olog_server is enabled but olog_admin_password is not set, or it is
+      the public demonstration password of Olog. Set it in
+      ansible/group_vars/local.yml, preferably encrypted with:
+      ansible-vault encrypt_string 'YourPassword' --name 'olog_admin_password'
+    quiet: true
+  tags:
+    - always
+
+- name: Check that Maven is available before installing anything
+  ansible.builtin.stat:
+    path: "{{ mvn_home | default('/opt/epics-tools/lib/apache-maven') }}/bin/mvn"
+  register: olog_preflight_maven
+  tags:
+    - always
+
+- name: Stop early if Maven is missing
+  ansible.builtin.assert:
+    that:
+      - olog_preflight_maven.stat.exists
+    fail_msg: >-
+      Maven was not found in {{ mvn_home | default('/opt/epics-tools/lib/apache-maven') }}. Olog is built from source with Maven,
+      which is installed by the phoebus role: set phoebus: true in local.yml.
+    quiet: true
+  tags:
+    - always
+
+- name: Cleanup existing installation
+  include_tasks: cleanup.yml
+  tags:
+    - cleanup
+    - always
+
+- name: Create system user and directories
+  include_tasks: create_user.yml
+  tags:
+    - user
+
+- name: Install and configure MongoDB
+  include_tasks: install_mongodb.yml
+  tags:
+    - mongodb
+
+- name: Install and configure ElasticSearch
+  include_tasks: install_elasticsearch.yml
+  tags:
+    - elasticsearch
+
+- name: Build and install Olog service
+  include_tasks: install_olog.yml
+  tags:
+    - olog
+
+- name: Seed initial data
+  include_tasks: seed_initial_data.yml
+  tags:
+    - seed
+  when: olog_seed_initial_data | default(true) | bool
+
+- name: Setup backup system
+  include_tasks: setup_backup.yml
+  tags:
+    - backup
+  when: olog_enable_backup | default(true) | bool
+
+- name: Display installation complete
+  debug:
+    msg: "Olog Server installation complete. Access at {{ olog_server_url }}"

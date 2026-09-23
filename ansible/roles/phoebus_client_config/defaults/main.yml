@@ -1,0 +1,35 @@
+# ============================================================================
+# RAPIDS - Olog Client Configuration Defaults
+# 
+# Description:
+#   Default configuration for Phoebus Olog client integration.
+#   Override these values in local.yml for site-specific settings.
+#
+# References:
+#   - Phoebus: https://github.com/ControlSystemStudio/phoebus
+#   - RAPIDS: https://github.com/Jack-at-LNL/rapids
+# ============================================================================
+
+# Olog server connection
+olog_server_url: "http://{{ inventory_hostname }}:{{ olog_port | default(8080) }}/Olog"
+olog_username: "{{ olog_admin_user | default('admin') }}"
+olog_password: "{{ olog_admin_password | default('') }}"
+
+# Phoebus installation paths
+phoebus_install_dir: "/opt/epics-tools/lib/phoebus"
+phoebus_settings_file: "{{ phoebus_install_dir }}/settings.ini"
+phoebus_user: "epics-dev"
+phoebus_group: "epics-dev"
+
+# Build environment
+java_home: "/usr/lib/jvm/java-17-openjdk"
+mvn_home: "/opt/epics-tools/lib/apache-maven"
+
+# Logbook configuration
+olog_default_logbooks: "operations"
+olog_save_credentials: true
+
+# Data fetched from server
+olog_logbooks_list: []
+olog_tags_list: []
+olog_levels_list: []

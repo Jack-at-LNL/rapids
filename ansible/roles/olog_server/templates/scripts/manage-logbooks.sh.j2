@@ -1,0 +1,92 @@
+#!/bin/bash
+# Olog Logbooks Management Script
+# Created by RAPIDS Ansible deployment
+
+OLOG_URL="{{ olog_server_url }}"
+OLOG_USER="{{ olog_admin_user }}"
+OLOG_PASS="{{ olog_admin_password }}"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+function usage() {
+    echo "Usage: $0 [add|delete|list|update] [logbook_name] [owner]"
+    echo ""
+    echo "Commands:"
+    echo "  add LOGBOOK_NAME [OWNER]     - Add a new logbook"
+    echo "  delete LOGBOOK_NAME           - Delete a logbook"
+    echo "  list                          - List all logbooks"
+    echo "  update LOGBOOK_NAME [OWNER]   - Update logbook owner"
+    exit 1
+}
+
+function list_logbooks() {
+    echo -e "${YELLOW}=== Current Logbooks ===${NC}"
+    curl -s "${OLOG_URL}/logbooks" -u "${OLOG_USER}:${OLOG_PASS}" | \
+        jq -r '.[] | "  - \(.name) (owner: \(.owner), state: \(.state))"' | sort
+}
+
+function add_logbook() {
+    local name="$1"
+    local owner="${2:-olog-logs}"
+    
+    if [ -z "$name" ]; then
+        echo -e "${RED}Error: Logbook name required${NC}"
+        usage
+    fi
+    
+    echo -e "${YELLOW}Adding logbook: ${name}${NC}"
+    
+    response=$(curl -s -w "\n%{http_code}" -X PUT "${OLOG_URL}/logbooks/${name}" \
+        -u "${OLOG_USER}:${OLOG_PASS}" \
+        -H "Content-Type: application/json" \
+        -d "{\"name\": \"${name}\", \"owner\": \"${owner}\", \"state\": \"Active\"}")
+    
+    http_code=$(echo "$response" | tail -n1)
+    
+    if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 201 ]; then
+        echo -e "${GREEN}✓ Logbook '${name}' added successfully${NC}"
+    else
+        echo -e "${RED}✗ Failed to add logbook (HTTP ${http_code})${NC}"
+        exit 1
+    fi
+}
+
+function delete_logbook() {
+    local name="$1"
+    
+    if [ -z "$name" ]; then
+        echo -e "${RED}Error: Logbook name required${NC}"
+        usage
+    fi
+    
+    echo -e "${YELLOW}Deleting logbook: ${name}${NC}"
+    read -p "Are you sure? (yes/no): " confirm
+    
+    if [ "$confirm" != "yes" ]; then
+        echo "Cancelled"
+        exit 0
+    fi
+    
+    response=$(curl -s -w "\n%{http_code}" -X DELETE "${OLOG_URL}/logbooks/${name}" \
+        -u "${OLOG_USER}:${OLOG_PASS}")
+    
+    http_code=$(echo "$response" | tail -n1)
+    
+    if [ "$http_code" -eq 200 ]; then
+        echo -e "${GREEN}✓ Logbook '${name}' deleted${NC}"
+    else
+        echo -e "${RED}✗ Failed to delete logbook${NC}"
+        exit 1
+    fi
+}
+
+case "$1" in
+    add) add_logbook "$2" "$3" ;;
+    delete) delete_logbook "$2" ;;
+    list) list_logbooks ;;
+    *) usage ;;
+esac

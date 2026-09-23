@@ -1,0 +1,55 @@
+---
+- name: Install Chrony
+  become: true
+  ansible.builtin.package:
+    name: chrony
+    state: present
+
+- name: Deploy chrony.conf from template (NTP servers from local.yml)
+  become: true
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /etc/chrony.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - restart chronyd
+    - force initial time step
+
+- name: Ensure chronyd is enabled and running
+  become: true
+  ansible.builtin.service:
+    name: chronyd
+    enabled: true
+    state: started
+
+- name: Wait for chronyd to establish initial sync (max 30 seconds)
+  become: true
+  ansible.builtin.command: chronyc waitsync 30 0.1
+  register: chrony_sync_result
+  failed_when: false
+  changed_when: false
+  when: not in_container
+
+- name: Force time step if sync failed
+  become: true
+  ansible.builtin.command: chronyc makestep
+  when: 
+    - not in_container
+    - chrony_sync_result.rc != 0
+  changed_when: true
+
+- name: Display sync status
+  become: true
+  ansible.builtin.command: chronyc tracking
+  register: tracking_output
+  changed_when: false
+  when: not in_container
+
+- name: Show time sync status
+  ansible.builtin.debug:
+    msg: "{{ tracking_output.stdout_lines }}"
+  when: 
+    - not in_container
+    - tracking_output.stdout_lines is defined

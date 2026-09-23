@@ -1,0 +1,27 @@
+# ============================================================================
+# RAPIDS - MongoDB Configuration
+#
+# Description:
+#   MongoDB configuration for Olog attachment storage.
+# ============================================================================
+
+# Storage configuration
+storage:
+  dbPath: /var/lib/mongo
+  journal:
+    enabled: true
+
+# Process management
+systemLog:
+  destination: file
+  logAppend: true
+  path: /var/log/mongodb/mongod.log
+
+# Network configuration
+net:
+  port: {{ olog_mongodb_port }}
+  bindIp: 127.0.0.1
+
+# Security disabled for internal deployment
+security:
+  authorization: disabled

@@ -1,0 +1,28 @@
+# ============================================================================
+# RAPIDS - ElasticSearch Configuration
+# 
+# Description:
+#   ElasticSearch configuration for Olog log entry indexing.
+# ============================================================================
+
+# Cluster configuration
+cluster.name: {{ olog_elasticsearch_cluster_name }}
+node.name: {{ olog_elasticsearch_node_name }}
+
+# Paths
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+
+# Network configuration
+network.host: 127.0.0.1
+http.port: {{ olog_elasticsearch_http_port }}
+transport.port: {{ olog_elasticsearch_transport_port }}
+
+# Discovery configuration
+discovery.type: single-node
+
+# Security disabled for internal deployment
+xpack.security.enabled: false
+xpack.security.enrollment.enabled: false
+xpack.security.http.ssl.enabled: false
+xpack.security.transport.ssl.enabled: false

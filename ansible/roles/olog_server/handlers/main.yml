@@ -1,0 +1,24 @@
+# ============================================================================
+# RAPIDS - Olog Server Handlers
+# 
+# Description:
+#   Service restart handlers triggered by configuration changes.
+# ============================================================================
+
+- name: restart olog
+  systemd:
+    name: olog
+    state: restarted
+  become: yes
+
+- name: restart elasticsearch
+  systemd:
+    name: elasticsearch
+    state: restarted
+  become: yes
+
+- name: restart mongodb
+  systemd:
+    name: mongod
+    state: restarted
+  become: yes

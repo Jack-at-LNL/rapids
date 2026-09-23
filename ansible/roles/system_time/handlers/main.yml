@@ -1,0 +1,12 @@
+---
+- name: restart chronyd
+  become: true
+  ansible.builtin.service:
+    name: chronyd
+    state: restarted
+
+- name: force initial time step
+  become: true
+  ansible.builtin.command: chronyc makestep
+  changed_when: true
+

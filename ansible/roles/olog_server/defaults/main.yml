@@ -1,0 +1,67 @@
+# ============================================================================
+# RAPIDS - Rapid Automated Production Infrastructure Deployment System
+# Olog Electronic Logbook Server - Default Configuration
+# 
+# Institution: INFN Laboratori Nazionali di Legnaro
+# Author: Mauro Giacchini
+# 
+# Description:
+#   Default configuration variables for Olog server deployment.
+#   Override these values in local.yml for site-specific settings.
+#
+# References:
+#   - Olog: https://github.com/Olog/phoebus-olog
+#   - RAPIDS: https://github.com/Jack-at-LNL/rapids
+# ============================================================================
+
+# Olog service version (built from source)
+olog_version: "5.1.2"
+
+# Installation directories (RAPIDS standard paths)
+olog_install_dir: "/opt/epics-tools/olog"
+olog_data_dir: "/var/lib/olog"
+olog_log_dir: "/var/log/olog"
+
+# Service user and group
+olog_user: "olog"
+olog_group: "olog"
+
+# Network configuration
+olog_port: 8080
+olog_server_url: "http://{{ inventory_hostname }}:{{ olog_port }}/Olog"
+
+# Administrator credentials
+olog_admin_user: "admin"
+# The Olog administrator password (variable olog_admin_password) is REQUIRED
+#   and has no default on purpose.
+#   Set it in local.yml, encrypted with ansible-vault (see local.yml.sample).
+#   The installation stops with a clear message if it is missing.
+
+# ElasticSearch configuration
+olog_elasticsearch_cluster_name: "olog-cluster"
+olog_elasticsearch_node_name: "{{ inventory_hostname }}"
+olog_elasticsearch_http_port: 9200
+olog_elasticsearch_transport_port: 9300
+
+# MongoDB configuration
+olog_mongodb_port: 27017
+olog_mongodb_database: "olog"
+olog_mongodb_version: "4.4"
+
+# Cleanup behavior during reinstallation
+olog_cleanup_packages: true
+olog_cleanup_user: false
+
+# Backup configuration
+olog_enable_backup: true
+olog_backup_dir: "/backup/olog"
+olog_backup_retention_days: 30
+
+# Initial data seeding
+olog_seed_initial_data: true
+olog_initial_logbooks: []
+olog_initial_tags: []
+
+# Build environment (configured by epics-tools role)
+java_home: "/usr/lib/jvm/java-17-openjdk"
+mvn_home: "/opt/epics-tools/lib/apache-maven"

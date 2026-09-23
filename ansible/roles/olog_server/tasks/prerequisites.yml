@@ -1,0 +1,36 @@
+# Prerequisites for Olog Server
+
+- name: Create Olog system user
+  user:
+    name: "{{ olog_user }}"
+    system: yes
+    shell: /sbin/nologin
+    home: "{{ olog_install_dir }}"
+    createhome: no
+  become: yes
+
+- name: Create Olog directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ olog_user }}"
+    group: "{{ olog_group }}"
+    mode: '0755'
+  loop:
+    - "{{ olog_install_dir }}"
+    - "{{ olog_install_dir }}/config"
+    - "{{ olog_data_dir }}"
+    - "{{ olog_data_dir }}/attachments"
+    - "{{ olog_log_dir }}"
+  become: yes
+
+- name: Install required system packages
+  package:
+    name:
+      - curl
+      - wget
+      - tar
+      - gzip
+      - jq
+    state: present
+  become: yes

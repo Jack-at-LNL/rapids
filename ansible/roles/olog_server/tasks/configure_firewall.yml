@@ -1,0 +1,42 @@
+# Configure firewall for Olog services
+
+- name: Check if firewalld is installed and running
+  systemd:
+    name: firewalld
+  register: firewalld_status
+  ignore_errors: yes
+  become: yes
+
+- name: Configure firewalld rules for Olog
+  when: firewalld_status.status.ActiveState == "active"
+  block:
+    - name: Allow Olog HTTP port
+      firewalld:
+        port: "{{ olog_port }}/tcp"
+        permanent: yes
+        immediate: yes
+        state: enabled
+        zone: "{{ item }}"
+      loop: "{{ olog_firewall_zones }}"
+      notify: reload firewalld
+      become: yes
+
+    - name: Allow ElasticSearch HTTP port (internal only)
+      firewalld:
+        port: "{{ olog_elasticsearch_http_port }}/tcp"
+        permanent: yes
+        immediate: yes
+        state: enabled
+        zone: internal
+      notify: reload firewalld
+      become: yes
+
+    - name: Allow MongoDB port (internal only)
+      firewalld:
+        port: "{{ olog_mongodb_port }}/tcp"
+        permanent: yes
+        immediate: yes
+        state: enabled
+        zone: internal
+      notify: reload firewalld
+      become: yes

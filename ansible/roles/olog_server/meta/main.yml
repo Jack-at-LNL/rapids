@@ -1,0 +1,27 @@
+# ============================================================================
+# RAPIDS - Olog Server Role Metadata
+# 
+# Description:
+#   Role metadata including dependencies and Galaxy information.
+# ============================================================================
+
+galaxy_info:
+  author: Mauro Giacchini
+  description: Olog Electronic Logbook Server for EPICS Control Systems
+  company: INFN Laboratori Nazionali di Legnaro
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.9"
+  
+  platforms:
+    - name: EL
+      versions:
+        - "9"
+  
+  galaxy_tags:
+    - epics
+    - logbook
+    - olog
+    - controls
+    - rapids
+
+dependencies: []

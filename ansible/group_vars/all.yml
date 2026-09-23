@@ -11,6 +11,12 @@ oac_tree: false
 archiver_appliance: false
 bluesky: false
 
+# RAPIDS roles (off by default, enable them in local.yml)
+system_time: false
+olog_server: false
+olog_client_config: false
+archiver_client_config: false
+
 m_base: true
 
 is_debian: "{{ ansible_facts['os_family'] == 'Debian' }}"
@@ -26,3 +32,15 @@ proxy_env: {}
 
 # when building inside a container during CI this is set to true
 in_container: false
+
+# ---------------------------------------------------------------------------
+# RAPIDS
+# ---------------------------------------------------------------------------
+# Hostname/IP used to build Archiver Appliance URLs for the Phoebus client
+archappl_host: "{{ ansible_facts['default_ipv4']['address'] | default('localhost') }}"
+
+# Project branding (shown in banners and generated documents)
+rapids_project_name: "RAPIDS"
+rapids_author_name: "Your Name"
+rapids_author_email: "your.email@example.org"
+rapids_institution: "Your Institution"

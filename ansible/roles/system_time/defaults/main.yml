@@ -1,0 +1,11 @@
+---
+# Default NTP servers for the RAPIDS system_time role.
+# The public NTP pool works anywhere with Internet access.
+# Override ntp_servers in local.yml with your site servers (first = primary), e.g.
+#   ntp_servers:
+#     - ntp.your-site.example.org
+#     - ntp1.inrim.it        # Italian national metrology institute (INRIM)
+ntp_servers:
+  - 0.pool.ntp.org
+  - 1.pool.ntp.org
+  - 2.pool.ntp.org

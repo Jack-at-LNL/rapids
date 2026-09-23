@@ -1,0 +1,52 @@
+# ============================================================================
+# RAPIDS - Olog Initial Data Seeding
+# 
+# Description:
+#   Creates initial logbooks and tags on Olog server via REST API.
+#   Data is defined in local.yml and applied during installation.
+# ============================================================================
+
+- name: Wait for Olog service to be fully ready
+  wait_for:
+    host: 127.0.0.1
+    port: "{{ olog_port }}"
+    delay: 5
+    timeout: 60
+
+- name: Create initial logbooks
+  uri:
+    url: "http://127.0.0.1:{{ olog_port }}/Olog/logbooks/{{ item.name }}"
+    method: PUT
+    user: "{{ olog_admin_user }}"
+    password: "{{ olog_admin_password }}"
+    force_basic_auth: yes
+    body_format: json
+    body:
+      name: "{{ item.name }}"
+      owner: "{{ item.owner }}"
+      state: "{{ item.state }}"
+    status_code: [200, 201]
+  loop: "{{ olog_initial_logbooks }}"
+  when: olog_initial_logbooks is defined and olog_initial_logbooks | length > 0
+
+- name: Create initial tags
+  uri:
+    url: "http://127.0.0.1:{{ olog_port }}/Olog/tags/{{ item.name }}"
+    method: PUT
+    user: "{{ olog_admin_user }}"
+    password: "{{ olog_admin_password }}"
+    force_basic_auth: yes
+    body_format: json
+    body:
+      name: "{{ item.name }}"
+      state: "Active"
+    status_code: [200, 201]
+  loop: "{{ olog_initial_tags }}"
+  when: olog_initial_tags is defined and olog_initial_tags | length > 0
+
+- name: Display seed data summary
+  debug:
+    msg:
+      - "✅ Olog server seeded with initial data"
+      - "Logbooks created: {{ olog_initial_logbooks | length if olog_initial_logbooks is defined else 0 }}"
+      - "Tags created: {{ olog_initial_tags | length if olog_initial_tags is defined else 0 }}"

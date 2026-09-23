@@ -1,0 +1,39 @@
+# ============================================================================
+# RAPIDS - Olog User and Directory Creation
+# 
+# Description:
+#   Creates system user, group, and directory structure for Olog service.
+# ============================================================================
+
+- name: Create Olog group
+  group:
+    name: "{{ olog_group }}"
+    system: yes
+    state: present
+  become: yes
+
+- name: Create Olog user
+  user:
+    name: "{{ olog_user }}"
+    group: "{{ olog_group }}"
+    system: yes
+    create_home: no
+    shell: /sbin/nologin
+    comment: "Olog Electronic Logbook Service"
+    state: present
+  become: yes
+
+- name: Create Olog directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ olog_user }}"
+    group: "{{ olog_group }}"
+    mode: '0755'
+  become: yes
+  loop:
+    - "{{ olog_install_dir }}"
+    - "{{ olog_install_dir }}/config"
+    - "{{ olog_data_dir }}"
+    - "{{ olog_data_dir }}/attachments"
+    - "{{ olog_log_dir }}"

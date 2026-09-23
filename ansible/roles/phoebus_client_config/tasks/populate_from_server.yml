@@ -1,0 +1,35 @@
+# ============================================================================
+# Populate Phoebus config from Olog /configuration endpoint
+# ============================================================================
+
+- name: Fetch Olog configuration from server
+  uri:
+    url: "{{ olog_server_url }}/configuration"
+    method: GET
+    user: "{{ olog_username }}"
+    password: "{{ olog_password }}"
+    force_basic_auth: yes
+    return_content: yes
+  register: olog_config
+  retries: 3
+  delay: 5
+
+- name: Extract logbooks from configuration
+  set_fact:
+    olog_logbooks_list: "{{ olog_config.json.logbooks | map(attribute='name') | list }}"
+
+- name: Extract tags from configuration
+  set_fact:
+    olog_tags_list: "{{ olog_config.json.tags | map(attribute='name') | list }}"
+
+- name: Extract levels from configuration
+  set_fact:
+    olog_levels_list: "{{ olog_config.json.levels }}"
+
+- name: Display extracted configuration
+  debug:
+    msg:
+      - "Fetched from {{ olog_server_url }}/configuration"
+      - "Logbooks: {{ olog_logbooks_list | length }}"
+      - "Tags: {{ olog_tags_list | length }}"
+      - "Levels: {{ olog_levels_list | length }}"

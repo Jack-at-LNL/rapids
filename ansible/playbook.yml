@@ -55,6 +55,13 @@
       when: catrust is defined and catrust | bool
       tags: catrust
 
+    # RAPIDS: NTP time synchronisation (chrony)
+    - name: System time
+      include_role:
+        name: system_time
+      when: system_time is defined and system_time | bool
+      tags: system_time
+
     - name: EPICS Base
       include_role:
         name: m_base
@@ -160,6 +167,22 @@
         name: archiver_appliance
       when: archiver_appliance is defined and archiver_appliance | bool
       tags: archiver_appliance
+
+    # RAPIDS: Olog electronic logbook server (ElasticSearch + MongoDB + Olog)
+    - name: Olog server
+      include_role:
+        name: olog_server
+      when: olog_server is defined and olog_server | bool
+      tags: [olog_server, olog]
+
+    # RAPIDS: Phoebus client settings for Olog (Ctrl+L) and Archiver (Ctrl+D)
+    - name: Phoebus client configuration
+      include_role:
+        name: phoebus_client_config
+      when:
+        - phoebus is defined and phoebus | bool
+        - (olog_client_config | default(false) | bool) or (archiver_client_config | default(false) | bool)
+      tags: phoebus_client_config
 
   # Defined at the play level (not inside a role's handlers/main.yml) so it's
   # always registered and notifiable regardless of which per-feature roles

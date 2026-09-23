@@ -1,0 +1,48 @@
+# ============================================================================
+# RAPIDS - Olog Client Configuration Cleanup
+# 
+# Description:
+#   Removes existing Olog configuration from Phoebus settings.ini
+#   to ensure clean configuration during updates.
+# ============================================================================
+
+- name: Display cleanup message
+  debug:
+    msg: "Cleaning up Phoebus Olog configuration..."
+
+- name: Check if settings.ini exists
+  stat:
+    path: "{{ phoebus_settings_file }}"
+  register: settings_exists
+  become: yes
+
+- name: Backup settings.ini before cleanup
+  copy:
+    src: "{{ phoebus_settings_file }}"
+    dest: "{{ phoebus_settings_file }}.pre-cleanup-{{ ansible_date_time.iso8601_basic_short }}"
+    remote_src: yes
+  become: yes
+  when: settings_exists.stat.exists
+
+- name: Remove all Olog configuration from settings.ini
+  lineinfile:
+    path: "{{ phoebus_settings_file }}"
+    regexp: "{{ item }}"
+    state: absent
+  become: yes
+  loop:
+    - '^# BEGIN OLOG.*'
+    - '^# END OLOG.*'
+    - '^# Olog Server.*'
+    - '^# Logbook UI.*'
+    - '^# Logbooks from.*'
+    - '^# Tags from.*'
+    - '^# Levels.*'
+    - '^org\.phoebus\.olog\.es\.api/.*'
+    - '^org\.phoebus\.olog/.*'
+    - '^org\.phoebus\.logbook/.*'
+  when: settings_exists.stat.exists
+
+- name: Display cleanup complete
+  debug:
+    msg: "✅ All Olog configuration removed from settings.ini"

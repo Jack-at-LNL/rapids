@@ -1,0 +1,33 @@
+# ============================================================================
+# RAPIDS - Olog Systemd Service
+#
+# Description:
+#   Systemd unit file for Olog electronic logbook service.
+# ============================================================================
+
+[Unit]
+Description=Olog Electronic Logbook Service
+Documentation=https://github.com/Olog/phoebus-olog
+After=network.target mongod.service elasticsearch.service
+Wants=mongod.service elasticsearch.service
+
+[Service]
+Type=simple
+User={{ olog_user }}
+Group={{ olog_group }}
+WorkingDirectory={{ olog_install_dir }}
+
+ExecStart=/usr/bin/java \
+    -Xms512m \
+    -Xmx1g \
+    -Dspring.config.location={{ olog_install_dir }}/config/application.properties \
+    -jar {{ olog_install_dir }}/olog-service.jar
+
+Restart=on-failure
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

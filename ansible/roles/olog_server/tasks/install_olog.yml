@@ -1,0 +1,258 @@
+# Install and configure Olog service
+# Build from source for versions 5.x - activate 'deployable-jar' profile for executable JAR
+# Following RAPIDS architecture: install under /opt/epics-tools
+
+- name: Install required build dependencies
+  yum:
+    name:
+      - git
+      - java-17-openjdk-devel
+    state: present
+  become: yes
+
+- name: Set Maven home (installed by the phoebus role)
+  set_fact:
+    maven_home: "{{ mvn_home | default('/opt/epics-tools/lib/apache-maven') }}"
+    maven_bin: "{{ mvn_home | default('/opt/epics-tools/lib/apache-maven') }}/bin/mvn"
+
+- name: Verify Maven is available
+  stat:
+    path: "{{ maven_bin }}"
+  register: maven_binary
+  become: yes
+
+- name: Fail if Maven is not found
+  fail:
+    msg: "Maven binary not found at {{ maven_bin }}. Enable the phoebus role (phoebus: true): it installs Maven."
+  when: not maven_binary.stat.exists
+
+- name: Verify Maven is functional
+  shell: "{{ maven_bin }} --version"
+  register: maven_version
+  changed_when: false
+  become: yes
+
+- name: Display Maven version
+  debug:
+    msg: "{{ maven_version.stdout_lines }}"
+
+- name: Determine JAVA_HOME for Java 17
+  shell: |
+    if [ -d /usr/lib/jvm/java-17-openjdk ]; then
+      echo "/usr/lib/jvm/java-17-openjdk"
+    elif [ -d /usr/lib/jvm/jre-17-openjdk ]; then
+      echo "/usr/lib/jvm/jre-17-openjdk"
+    else
+      dirname $(dirname $(readlink -f $(which java)))
+    fi
+  register: java_home_detect
+  changed_when: false
+  become: yes
+
+- name: Set JAVA_HOME fact
+  set_fact:
+    java_home_path: "{{ java_home_detect.stdout }}"
+
+- name: Display Java home
+  debug:
+    msg: "Using JAVA_HOME: {{ java_home_path }}"
+
+- name: Create temporary build directory
+  file:
+    path: /tmp/olog-build
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: Clone Olog repository
+  git:
+    repo: 'https://github.com/Olog/phoebus-olog.git'
+    dest: /tmp/olog-build/phoebus-olog
+    version: "v{{ olog_version }}"
+    force: yes
+  become: yes
+  register: git_clone
+
+- name: Display build information
+  debug:
+    msg: "Building Olog version {{ olog_version }} from source with 'deployable-jar' profile (this may take 5-10 minutes)"
+
+- name: Build Olog service with Maven (activate deployable-jar profile)
+  shell: |
+    export JAVA_HOME={{ java_home_path }}
+    export PATH={{ maven_home }}/bin:$PATH
+    cd /tmp/olog-build/phoebus-olog
+    {{ maven_bin }} clean package -DskipTests -Pdeployable-jar
+  become: yes
+  register: maven_build
+  changed_when: maven_build.rc == 0
+  failed_when: maven_build.rc != 0
+
+- name: Display Maven build summary (last 30 lines)
+  debug:
+    msg: "{{ maven_build.stdout_lines[-30:] if maven_build.stdout_lines is defined and maven_build.stdout_lines|length > 0 else ['No output available'] }}"
+  when: maven_build is defined
+
+- name: Display Maven build errors if any
+  debug:
+    msg: "{{ maven_build.stderr_lines }}"
+  when: maven_build is defined and maven_build.stderr_lines is defined and maven_build.stderr_lines|length > 0
+
+- name: Find all JAR files in target directory
+  find:
+    paths: /tmp/olog-build/phoebus-olog/target
+    patterns: "*.jar"
+    file_type: file
+  register: all_jars
+  become: yes
+
+- name: Display all found JAR files with sizes
+  debug:
+    msg: "Found {{ all_jars.files | length }} JAR files"
+
+- name: Filter for executable JAR (exclude javadoc, sources, original)
+  set_fact:
+    executable_jars: "{{ all_jars.files | rejectattr('path', 'search', 'javadoc') | rejectattr('path', 'search', 'sources') | rejectattr('path', 'search', '\\.original$') | list }}"
+
+- name: Display filtered executable JARs
+  debug:
+    msg: "Filtered to {{ executable_jars | length }} executable JAR(s): {{ executable_jars | map(attribute='path') | list }}"
+
+- name: Fail if no executable JAR files found
+  fail:
+    msg: "No executable JAR files were found after Maven build. Check Maven build output above."
+  when: executable_jars | length == 0
+
+- name: Select largest JAR (the executable Spring Boot fat JAR)
+  set_fact:
+    olog_jar_file: "{{ (executable_jars | sort(attribute='size', reverse=true) | first).path }}"
+
+- name: Display selected JAR file details
+  debug:
+    msg: "Selected JAR: {{ olog_jar_file }} (size: {{ ((executable_jars | sort(attribute='size', reverse=true) | first).size / 1024 / 1024) | round(2) }} MB)"
+
+- name: Verify JAR size is reasonable (> 1 MB)
+  fail:
+    msg: "Selected JAR is too small ({{ ((executable_jars | sort(attribute='size', reverse=true) | first).size / 1024 / 1024) | round(2) }} MB). Expected Spring Boot fat JAR should be 50-100 MB."
+  when: (executable_jars | sort(attribute='size', reverse=true) | first).size < 1048576
+
+- name: Verify JAR is executable (has Main-Class manifest attribute)
+  shell: |
+    unzip -q -c "{{ olog_jar_file }}" META-INF/MANIFEST.MF | grep -q "Main-Class"
+  args:
+    chdir: /tmp/olog-build/phoebus-olog/target
+  register: jar_manifest_check
+  changed_when: false
+  failed_when: false
+  become: yes
+
+- name: Display manifest check result
+  debug:
+    msg: "{{ 'JAR is executable (has Main-Class)' if jar_manifest_check.rc == 0 else 'WARNING: JAR may not be executable' }}"
+
+- name: Fail if JAR is not executable
+  fail:
+    msg: "The selected JAR does not have a Main-Class manifest attribute. The 'deployable-jar' profile may not have been activated correctly."
+  when: jar_manifest_check.rc != 0
+
+- name: Create Olog installation directory under RAPIDS structure
+  file:
+    path: "{{ olog_install_dir }}"
+    state: directory
+    owner: "{{ olog_user }}"
+    group: "{{ olog_group }}"
+    mode: '0755'
+  become: yes
+
+- name: Create Olog config directory
+  file:
+    path: "{{ olog_install_dir }}/config"
+    state: directory
+    owner: "{{ olog_user }}"
+    group: "{{ olog_group }}"
+    mode: '0755'
+  become: yes
+
+- name: Copy built JAR to installation directory
+  copy:
+    src: "{{ olog_jar_file }}"
+    dest: "{{ olog_install_dir }}/olog-service.jar"
+    owner: "{{ olog_user }}"
+    group: "{{ olog_group }}"
+    mode: '0644'
+    remote_src: yes
+  become: yes
+  register: olog_install
+
+- name: Display installed JAR information
+  debug:
+    msg: "Olog service JAR successfully installed at {{ olog_install_dir }}/olog-service.jar"
+  when: olog_install is succeeded
+
+- name: Verify installed JAR size
+  stat:
+    path: "{{ olog_install_dir }}/olog-service.jar"
+  register: installed_jar_stat
+  become: yes
+
+- name: Display installed JAR size
+  debug:
+    msg: "Installed JAR size: {{ (installed_jar_stat.stat.size / 1024 / 1024) | round(2) }} MB"
+
+- name: Clean up build directory
+  file:
+    path: /tmp/olog-build
+    state: absent
+  become: yes
+
+- name: Create Olog application.properties
+  template:
+    src: application.properties.j2
+    dest: "{{ olog_install_dir }}/config/application.properties"
+    owner: "{{ olog_user }}"
+    group: "{{ olog_group }}"
+    mode: '0640'
+  notify: restart olog
+  become: yes
+
+- name: Create Olog systemd service
+  template:
+    src: olog.service.j2
+    dest: /etc/systemd/system/olog.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart olog
+  become: yes
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  become: yes
+
+- name: Enable and start Olog service
+  systemd:
+    name: olog
+    enabled: yes
+    state: started
+  become: yes
+
+- name: Wait for Olog service to start
+  wait_for:
+    host: localhost
+    port: "{{ olog_port }}"
+    delay: 15
+    timeout: 300
+
+- name: Verify Olog service is responding
+  uri:
+    url: "http://localhost:{{ olog_port }}/Olog"
+    method: GET
+    status_code: 200
+    user: "{{ olog_admin_user }}"
+    password: "{{ olog_admin_password }}"
+    force_basic_auth: yes
+  register: olog_health
+  until: olog_health.status == 200
+  retries: 30
+  delay: 10
