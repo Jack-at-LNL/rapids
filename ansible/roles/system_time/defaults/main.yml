@@ -9,3 +9,9 @@ ntp_servers:
   - 0.pool.ntp.org
   - 1.pool.ntp.org
   - 2.pool.ntp.org
+
+# Seconds to wait for the first synchronisation
+system_time_sync_timeout: 120
+# true: stop the installation if no time server answers (recommended in production)
+# false: continue with a clear warning (useful on isolated test networks)
+system_time_require_sync: false

@@ -1,5 +1,8 @@
 ---
-- name: Install Chrony
+# RAPIDS - system_time: NTP synchronisation with chrony
+# Servers come from ntp_servers (local.yml); defaults in defaults/main.yml.
+
+- name: Install chrony
   become: true
   ansible.builtin.package:
     name: chrony
@@ -13,9 +16,7 @@
     owner: root
     group: root
     mode: '0644'
-  notify:
-    - restart chronyd
-    - force initial time step
+  register: system_time_conf
 
 - name: Ensure chronyd is enabled and running
   become: true
@@ -24,32 +25,65 @@
     enabled: true
     state: started
 
-- name: Wait for chronyd to establish initial sync (max 30 seconds)
+- name: Check whether chronyd is synchronised
   become: true
-  ansible.builtin.command: chronyc waitsync 30 0.1
-  register: chrony_sync_result
-  failed_when: false
+  ansible.builtin.command: chronyc -n tracking
+  register: system_time_before
   changed_when: false
+  failed_when: false
   when: not in_container
 
-- name: Force time step if sync failed
+- name: Restart chronyd now if its configuration changed or it is not synchronised
   become: true
-  ansible.builtin.command: chronyc makestep
-  when: 
+  ansible.builtin.service:
+    name: chronyd
+    state: restarted
+  when:
     - not in_container
-    - chrony_sync_result.rc != 0
-  changed_when: true
+    - "system_time_conf.changed or ((system_time_before.stdout | default('')) is not search('Leap status *: *Normal'))"
 
-- name: Display sync status
+- name: Wait for chronyd to synchronise (up to system_time_sync_timeout seconds)
+  become: true
+  ansible.builtin.command: >-
+    chronyc waitsync {{ ((system_time_sync_timeout | int) / 10) | round(0, 'ceil') | int }} 1 0 10
+  register: system_time_sync
+  changed_when: false
+  failed_when: false
+  when: not in_container
+
+- name: Read the synchronisation status
   become: true
   ansible.builtin.command: chronyc tracking
   register: tracking_output
   changed_when: false
   when: not in_container
 
-- name: Show time sync status
+- name: Show time synchronisation status
   ansible.builtin.debug:
     msg: "{{ tracking_output.stdout_lines }}"
-  when: 
+  when:
     - not in_container
     - tracking_output.stdout_lines is defined
+
+- name: Stop if time synchronisation is required but no server answered
+  ansible.builtin.fail:
+    msg: >-
+      chronyd could not synchronise with any of {{ ntp_servers | join(', ') }}
+      within {{ system_time_sync_timeout }} seconds. Check that this machine can
+      reach them on UDP port 123, or correct ntp_servers in local.yml.
+  when:
+    - not in_container
+    - (system_time_sync.rc | default(0)) != 0
+    - system_time_require_sync | bool
+
+- name: Warn clearly if no time server answered
+  ansible.builtin.debug:
+    msg:
+      - "WARNING: the clock of this machine is NOT synchronised."
+      - "Servers tried: {{ ntp_servers | join(', ') }}"
+      - "Check network access to UDP port 123, or set ntp_servers in local.yml."
+      - "Set system_time_require_sync: true to stop the installation in this case."
+  when:
+    - not in_container
+    - (system_time_sync.rc | default(0)) != 0
+    - not (system_time_require_sync | bool)
