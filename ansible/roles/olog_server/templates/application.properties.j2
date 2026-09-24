@@ -23,9 +23,27 @@ mongo.database=olog
 spring.servlet.multipart.max-file-size=50MB
 spring.servlet.multipart.max-request-size=100MB
 
-# Authentication
-spring.security.user.name={{ olog_admin_user }}
-spring.security.user.password={{ olog_admin_password }}
+# Authentication (Olog 5.x): the built-in demo accounts are switched off.
+# Users come from the embedded LDAP user file written by RAPIDS
+# (olog_auth_mode: embedded_ldap) or from the site's LDAP / Active Directory.
+demo_auth.enabled = false
+{% if olog_auth_mode == 'embedded_ldap' %}
+embedded_ldap.enabled = true
+embedded_ldap.urls = ldap://localhost:8389/dc=olog,dc=local
+embedded_ldap.base.dn = dc=olog,dc=local
+embedded_ldap.user.dn.pattern = uid={0},ou=People
+embedded_ldap.groups.search.base = ou=Group
+embedded_ldap.groups.search.pattern = (memberUid= {1})
+spring.ldap.embedded.ldif = file:{{ olog_install_dir }}/config/rapids-users.ldif
+spring.ldap.embedded.base-dn = dc=olog,dc=local
+spring.ldap.embedded.port = 8389
+spring.ldap.embedded.validation.enabled = false
+{% else %}
+embedded_ldap.enabled = false
+{% endif %}
+{% for line in olog_auth_extra_properties %}
+{{ line }}
+{% endfor %}
 
 # Logging
 logging.level.org.phoebus.olog={{ olog_log_level | default('INFO') }}

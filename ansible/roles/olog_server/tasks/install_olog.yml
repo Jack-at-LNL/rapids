@@ -205,6 +205,18 @@
     state: absent
   become: yes
 
+- name: Create Olog user file (embedded LDAP) from local.yml
+  template:
+    src: rapids-users.ldif.j2
+    dest: "{{ olog_install_dir }}/config/rapids-users.ldif"
+    owner: "{{ olog_user }}"
+    group: "{{ olog_group }}"
+    mode: '0600'
+  no_log: true
+  notify: restart olog
+  become: yes
+  when: olog_auth_mode == 'embedded_ldap'
+
 - name: Create Olog application.properties
   template:
     src: application.properties.j2

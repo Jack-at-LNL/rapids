@@ -35,6 +35,17 @@ olog_server_url: "http://{{ inventory_hostname }}:{{ olog_port }}/Olog"
 
 # Administrator credentials
 olog_admin_user: "admin"
+
+# How Olog authenticates users (Olog 5.x). In both modes Olog's built-in demo
+# accounts (admin/adminPass, user/userPass) are switched off.  # audit: allow
+#   embedded_ldap : RAPIDS writes an LDAP user file with olog_admin_user and
+#                   olog_admin_password (default, no external server needed)
+#   external      : the site's LDAP or Active Directory; put the Olog settings
+#                   in olog_auth_extra_properties, e.g.
+#                     - "ldap.enabled = true"
+#                     - "ldap.urls = ldaps://ldap.example.org/dc=example,dc=org"
+olog_auth_mode: "embedded_ldap"
+olog_auth_extra_properties: []
 # The Olog administrator password (variable olog_admin_password) is REQUIRED
 #   and has no default on purpose.
 #   Set it in local.yml, encrypted with ansible-vault (see local.yml.sample).

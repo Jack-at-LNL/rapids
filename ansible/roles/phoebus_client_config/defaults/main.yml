@@ -17,7 +17,10 @@ olog_password: "{{ olog_admin_password | default('') }}"
 
 # Phoebus installation paths
 phoebus_install_dir: "/opt/epics-tools/lib/phoebus"
-phoebus_settings_file: "{{ phoebus_install_dir }}/settings.ini"
+# Ralph's run-phoebus starts Phoebus with -settings /opt/epics-tools/config/preferences.ini,
+# so the RAPIDS settings are appended to that file; being later in the file,
+# they override the training defaults (e.g. logbook_factory=inmemory).
+phoebus_settings_file: "/opt/epics-tools/config/preferences.ini"
 phoebus_user: "epics-dev"
 phoebus_group: "epics-dev"
 

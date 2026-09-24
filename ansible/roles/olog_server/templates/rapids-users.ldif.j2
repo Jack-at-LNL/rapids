@@ -1,0 +1,34 @@
+# RAPIDS - Olog user file for the embedded LDAP server
+# Managed by Ansible from local.yml (olog_admin_user, olog_admin_password).
+dn: dc=olog,dc=local
+objectClass: dcObject
+objectClass: organization
+dc: olog
+o: olog
+
+dn: ou=Group,dc=olog,dc=local
+objectClass: organizationalunit
+ou: Group
+
+dn: ou=People,dc=olog,dc=local
+objectClass: organizationalunit
+ou: People
+
+dn: uid={{ olog_admin_user }},ou=People,dc=olog,dc=local
+uid: {{ olog_admin_user }}
+objectClass: account
+objectClass: posixAccount
+cn: {{ olog_admin_user }}
+description: RAPIDS Olog administrator
+userPassword:: {{ olog_admin_password | b64encode }}
+uidNumber: 23005
+gidNumber: 23005
+homeDirectory: /dev/null
+{% for group in ['olog-admins', 'olog-logs', 'olog-logbooks', 'olog-tags', 'olog-properties'] %}
+
+dn: cn={{ group }},ou=Group,dc=olog,dc=local
+cn: {{ group }}
+objectClass: posixGroup
+gidNumber: {{ 24001 + loop.index0 }}
+memberUid: {{ olog_admin_user }}
+{% endfor %}
