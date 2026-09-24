@@ -1,0 +1,8 @@
+---
+# RAPIDS landing page: adds the RAPIDS project information to the EPICS
+# Archiver Appliance management page without replacing the page itself,
+# so it keeps working when the Archiver is updated.
+rapids_landing_page_tomcat_home: "/opt/epics-tools/lib/tomcat"
+rapids_landing_page_file: "{{ rapids_landing_page_tomcat_home }}/webapps/mgmt/ui/index.html"
+rapids_landing_page_contact_text: >-
+  {{ rapids_project_name | default('RAPIDS') }} - EPICS Archiver Appliance management console.

@@ -168,6 +168,15 @@
       when: archiver_appliance is defined and archiver_appliance | bool
       tags: archiver_appliance
 
+    # RAPIDS: project information on the Archiver management page
+    - name: RAPIDS landing page
+      include_role:
+        name: rapids_landing_page
+      when:
+        - archiver_appliance is defined and archiver_appliance | bool
+        - rapids_landing_page | default(true) | bool
+      tags: rapids_landing_page
+
     # RAPIDS: Olog electronic logbook server (ElasticSearch + MongoDB + Olog)
     - name: Olog server
       include_role:

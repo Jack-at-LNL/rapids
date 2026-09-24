@@ -1,0 +1,37 @@
+---
+# RAPIDS - landing page on the Archiver Appliance management console
+
+- name: Check that the Archiver management page exists
+  ansible.builtin.stat:
+    path: "{{ rapids_landing_page_file }}"
+  register: rapids_landing_page_stat
+
+- name: Report when the Archiver management page is not installed
+  ansible.builtin.debug:
+    msg: "Archiver management page not found at {{ rapids_landing_page_file }}; RAPIDS landing page skipped."
+  when: not rapids_landing_page_stat.stat.exists
+
+- name: Set the site contact text of the Archiver management page
+  become: true
+  ansible.builtin.replace:
+    path: "{{ rapids_landing_page_file }}"
+    regexp: '(<!-- @begin\(site_contact_text\) -->)[\s\S]*?(<!-- @end\(site_contact_text\) -->)'
+    replace: '\1 {{ rapids_landing_page_contact_text | e }} \2'
+  when: rapids_landing_page_stat.stat.exists
+
+- name: Add the RAPIDS project footer to the Archiver management page
+  become: true
+  ansible.builtin.blockinfile:
+    path: "{{ rapids_landing_page_file }}"
+    marker: "<!-- {mark} RAPIDS FOOTER - managed by Ansible, configured via local.yml -->"
+    insertbefore: "</body>"
+    block: |
+      <div style="margin-top: 30px; padding: 15px; text-align: center; font-size: 0.9em; border-top: 2px solid #e9ecef;">
+        <div style="margin-bottom: 5px;">
+          <strong style="color: #667eea;">&#9889; {{ rapids_project_name | default('RAPIDS') | e }}</strong>
+        </div>
+        <div style="font-size: 0.85em; color: #6c757d;">
+          <a href="mailto:{{ rapids_author_email | default('') | e }}" style="color: #667eea; text-decoration: none;">{{ rapids_author_name | default('') | e }}</a> &middot; {{ rapids_institution | default('') | e }}
+        </div>
+      </div>
+  when: rapids_landing_page_stat.stat.exists

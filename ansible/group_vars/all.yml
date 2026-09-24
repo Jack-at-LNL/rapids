@@ -16,6 +16,7 @@ system_time: false
 olog_server: false
 olog_client_config: false
 archiver_client_config: false
+rapids_landing_page: true   # RAPIDS footer on the Archiver page (only with archiver_appliance)
 
 m_base: true
 
