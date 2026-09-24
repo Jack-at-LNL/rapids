@@ -58,13 +58,11 @@
   block:
     - name: Extract logbooks from local.yml
       set_fact:
-        phoebus_logbooks: "{{ olog_initial_logbooks | map(attribute='name') | list | join(',') }}"
-      when: olog_initial_logbooks is defined
+        phoebus_logbooks: "{{ olog_initial_logbooks | default([]) | map(attribute='name') | list | join(',') }}"
 
     - name: Extract tags from local.yml
       set_fact:
-        phoebus_tags: "{{ olog_initial_tags | map(attribute='name') | list | join(',') }}"
-      when: olog_initial_tags is defined
+        phoebus_tags: "{{ olog_initial_tags | default([]) | map(attribute='name') | list | join(',') }}"
 
     - name: Set levels
       set_fact:
