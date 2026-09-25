@@ -45,3 +45,6 @@ rapids_project_name: "RAPIDS"
 rapids_author_name: "Your Name"
 rapids_author_email: "your.email@example.org"
 rapids_institution: "Your Institution"
+
+# RAPIDS: production archiving policies (MTS 7 days, LTS kept forever)
+archiver_appliance_policies_file: "rapids-policies.py"

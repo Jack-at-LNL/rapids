@@ -20,3 +20,14 @@ archiver_appliance_java_heap_tuning_opts: "-XX:MaxHeapFreeRatio=10 -XX:MinHeapFr
 # --- Training-VM homepage link ---
 archiver_homepage_link_title: "Archiver"
 archiver_homepage_link_url: "http://localhost:17665/mgmt/ui/index.html"
+
+# Address the Archiver gives to clients (browsers, Phoebus) in appliances.xml.
+# 'localhost' works only on this machine; RAPIDS sets archappl_host
+# (group_vars/all.yml) to the machine address so that other machines work too.
+archiver_appliance_host: "{{ archappl_host | default('localhost') }}"
+archiver_appliance_http_port: 17665
+archiver_appliance_base_url: "http://{{ archiver_appliance_host }}:{{ archiver_appliance_http_port }}"
+# Cluster address: a single appliance talks only to itself
+archiver_appliance_cluster_inetport: "localhost:16670"
+# Archiving policies file (in files/); RAPIDS uses rapids-policies.py
+archiver_appliance_policies_file: "policies.py"

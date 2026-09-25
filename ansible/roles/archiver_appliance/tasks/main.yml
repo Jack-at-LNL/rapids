@@ -41,14 +41,27 @@
     - storage/lts
     - archappl_conf
 
-- name: Configure Archiver Appliance
+- name: Configure Archiver Appliance - appliances.xml
+  become: true
+  ansible.builtin.template:
+    src: appliances.xml.j2
+    dest: "{{ tomcat_home }}/archappl_conf/appliances.xml"
+    owner: "{{ tomcat_user }}"
+    group: "{{ tomcat_group }}"
+    mode: "0644"
+  notify:
+    - Restart archiver-appliance
+
+- name: Configure Archiver Appliance - policies.py
   become: true
   ansible.builtin.copy:
-    src: "{{ item }}"
-    dest: "{{ tomcat_home }}/archappl_conf/{{ item }}"
-  loop:
-    - appliances.xml
-    - policies.py
+    src: "{{ archiver_appliance_policies_file }}"
+    dest: "{{ tomcat_home }}/archappl_conf/policies.py"
+    owner: "{{ tomcat_user }}"
+    group: "{{ tomcat_group }}"
+    mode: "0644"
+  notify:
+    - Restart archiver-appliance
 
 - name: Set the archappl.properties
   become: true
@@ -83,7 +96,19 @@
 - name: Run the Archiver-Appliance's MariaDB install script
   ansible.builtin.shell:
     cmd: "mariadb -u archappl --password=archappl archappl < {{ tomcat_home }}/webapps/mgmt/install/archappl_mysql.sql"
-  when: "tables.rowcount == 0"
+  when: "tables.rowcount[0] == 0"
+
+# Safety net (old RAPIDS, production incident of 5 Mar 2026): under MariaDB strict mode
+# a NOT NULL 'appliance' column without default rejects the Archiver's inserts,
+# PVTypeInfo stays empty and every restart loses all PVs. Idempotent.
+- name: Make PVTypeInfo.appliance nullable (MariaDB strict mode)
+  community.mysql.mysql_query:
+    login_db: archappl
+    login_user: archappl
+    login_password: archappl   # audit: allow - Ralph's default, to become a setting
+    query: ALTER TABLE PVTypeInfo MODIFY COLUMN appliance VARCHAR(64) DEFAULT NULL
+  failed_when: false
+  changed_when: false
 
 - name: Create Archiver Appliance systemd service
   become: true
