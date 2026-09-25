@@ -36,3 +36,9 @@ olog_save_credentials: true
 olog_logbooks_list: []
 olog_tags_list: []
 olog_levels_list: []
+
+# Default search when the Phoebus logbook opens (Phoebus itself uses 12 hours)
+phoebus_logbook_default_query: "desc=*&start=1 week&end=now"
+# The old clean-up removed the block markers and duplicated the settings block
+# at every run; the settings file is rewritten by the phoebus role anyway.
+phoebus_client_cleanup: false

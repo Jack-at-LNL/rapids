@@ -88,3 +88,11 @@ olog_initial_tags: []
 # Build environment (configured by epics-tools role)
 java_home: "/usr/lib/jvm/java-17-openjdk"
 mvn_home: "/opt/epics-tools/lib/apache-maven"
+
+# Personal Olog accounts (embedded_ldap mode), in addition to olog_admin_user.
+# Passwords from the vault. 'admin: true' gives administrator rights
+# (all Olog groups); otherwise the account can write log entries (olog-logs).
+#   olog_users:
+#     - { name: user1, password: "{{ olog_user1_password }}", admin: true }
+#     - { name: user2, password: "{{ olog_user2_password }}" }
+olog_users: []

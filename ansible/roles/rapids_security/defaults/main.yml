@@ -1,0 +1,16 @@
+---
+# RAPIDS security settings
+rapids_firewall_zone: public
+# Ports open to the control network. Channel Access and PV Access always;
+# Olog and the Archiver when installed. Add site ports in rapids_firewall_extra_ports.
+rapids_firewall_ports: >-
+  {{ ['5064-5065/tcp', '5064-5065/udp', '5075-5076/tcp', '5075-5076/udp']
+     + (['8080/tcp'] if (olog_server | default(false) | bool) else [])
+     + (['17665/tcp'] if (archiver_appliance | default(false) | bool) else []) }}
+rapids_firewall_extra_ports: []
+# Internal ports that must never be reachable from the network:
+# Olog embedded LDAP (holds the user file), ElasticSearch, MongoDB, MariaDB,
+# Archiver cluster port.
+rapids_firewall_forbidden_ports: ['8389/tcp', '9200/tcp', '9300/tcp', '27017/tcp', '3306/tcp', '16670/tcp']
+# MariaDB (Archiver database) listens only on this machine
+rapids_mariadb_local_only: true

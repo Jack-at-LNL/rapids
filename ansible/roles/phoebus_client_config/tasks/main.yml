@@ -46,7 +46,7 @@
 
 - name: Cleanup existing configuration
   include_tasks: cleanup.yml
-  when: cleanup_exists.stat.exists
+  when: cleanup_exists.stat.exists and (phoebus_client_cleanup | default(false) | bool)
   tags:
     - cleanup
 
@@ -74,20 +74,14 @@
         marker: "# {mark} OLOG CONFIGURATION - MANAGED BY ANSIBLE"
         create: yes
         block: |
-          # CRITICAL: Logbook factory (org.phoebus.logbook NOT .ui!)
+          # Logbook: the Olog server (preference names as defined in the Phoebus source)
           org.phoebus.logbook/logbook_factory=olog-es
-          
-          # Olog ES API Configuration
           org.phoebus.olog.es.api/olog_url={{ olog_server_url }}
-          org.phoebus.olog.es.api/username={{ olog_username }}
-          org.phoebus.olog.es.api/password={{ olog_password }}
-          
-          # Logbook UI Configuration
-          org.phoebus.applications.logbook.ui/save_credentials=true
-          org.phoebus.applications.logbook.ui/default_logbooks={{ olog_default_logbooks }}
-          org.phoebus.applications.logbook.ui/logbooks={{ phoebus_logbooks }}
-          org.phoebus.applications.logbook.ui/tags={{ phoebus_tags }}
-          org.phoebus.applications.logbook.ui/levels={{ phoebus_levels }}
+          org.phoebus.olog.es.api/levels={{ phoebus_levels }}
+          org.phoebus.logbook.olog.ui/default_logbooks={{ olog_default_logbooks }}
+          org.phoebus.logbook.olog.ui/default_logbook_query={{ phoebus_logbook_default_query }}
+          # Users log in with their own Olog account; Phoebus may remember it
+          org.phoebus.ui/save_credentials=true
         owner: "{{ phoebus_user }}"
         group: "{{ phoebus_group }}"
         mode: '0644'

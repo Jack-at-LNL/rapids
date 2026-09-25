@@ -1,0 +1,22 @@
+---
+# RAPIDS - EPICS environment variables at login (EPICS_BASE, EPICS_HOST_ARCH)
+
+- name: Export EPICS_BASE and EPICS_HOST_ARCH at login
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/profile.d/rapids-epics-env.sh
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # RAPIDS: EPICS_BASE and EPICS_HOST_ARCH from the installed EPICS Base
+      if [ -r /opt/epics/RELEASE.local ]; then
+          EPICS_BASE=$(sed -n 's/^EPICS_BASE *= *//p' /opt/epics/RELEASE.local | tail -1)
+          if [ -n "$EPICS_BASE" ]; then
+              export EPICS_BASE
+              if [ -x "$EPICS_BASE/startup/EpicsHostArch" ]; then
+                  EPICS_HOST_ARCH=$("$EPICS_BASE/startup/EpicsHostArch")
+                  export EPICS_HOST_ARCH
+              fi
+          fi
+      fi

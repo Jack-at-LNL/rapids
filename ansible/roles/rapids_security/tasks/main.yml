@@ -1,0 +1,63 @@
+---
+# RAPIDS - security: firewall with only the needed ports, local-only MariaDB
+
+- name: Install firewalld
+  become: true
+  ansible.builtin.package:
+    name: firewalld
+    state: present
+
+- name: Enable and start firewalld
+  become: true
+  ansible.builtin.service:
+    name: firewalld
+    enabled: true
+    state: started
+  when: not in_container
+
+- name: Open the ports RAPIDS needs
+  become: true
+  ansible.posix.firewalld:
+    zone: "{{ rapids_firewall_zone }}"
+    port: "{{ item }}"
+    permanent: true
+    immediate: true
+    state: enabled
+  loop: "{{ rapids_firewall_ports + rapids_firewall_extra_ports }}"
+  when: not in_container
+
+- name: Read the ports open in the firewall
+  become: true
+  ansible.builtin.command: firewall-cmd --zone={{ rapids_firewall_zone }} --list-ports
+  register: rapids_open_ports
+  changed_when: false
+  when: not in_container
+
+- name: Stop if an internal service port is open in the firewall
+  ansible.builtin.assert:
+    that:
+      - (rapids_open_ports.stdout.split() | intersect(rapids_firewall_forbidden_ports) | length) == 0
+    fail_msg: >-
+      Internal ports open in the firewall: {{ rapids_open_ports.stdout.split() | intersect(rapids_firewall_forbidden_ports) }}.
+      They must not be reachable from the network (the Olog LDAP port exposes the user file).
+    quiet: true
+  when: not in_container
+
+- name: Check whether MariaDB is installed
+  ansible.builtin.stat:
+    path: /etc/my.cnf.d
+  register: rapids_mycnf_dir
+
+- name: MariaDB listens only on this machine
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/my.cnf.d/rapids-local-only.cnf
+    content: |
+      # RAPIDS: the Archiver database is used only locally
+      [mysqld]
+      bind-address = 127.0.0.1
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart mariadb for RAPIDS
+  when: rapids_mariadb_local_only | bool and rapids_mycnf_dir.stat.exists

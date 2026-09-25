@@ -29,6 +29,21 @@
   tags:
     - always
 
+- name: Check the passwords of the personal Olog accounts
+  ansible.builtin.assert:
+    that:
+      - item.name is defined and item.name | length > 0
+      - item.password is defined and (item.password | string | length) > 0
+      - item.password not in ['adminPass', 'userPass']   # audit: allow - demo values refused
+    fail_msg: "Olog account '{{ item.name | default('?') }}': a password from the vault is required (and not a demo password)."
+    quiet: true
+  loop: "{{ olog_users | default([]) }}"
+  loop_control:
+    label: "{{ item.name | default('?') }}"
+  no_log: true
+  tags:
+    - always
+
 - name: Check that Maven is available before installing anything
   ansible.builtin.stat:
     path: "{{ mvn_home | default('/opt/epics-tools/lib/apache-maven') }}/bin/mvn"
@@ -73,35 +88,51 @@
   tags:
     - olog
 
-- name: Check that Olog accepts the configured password and refuses the demo accounts
+- name: Check that Olog accepts every configured account
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ olog_port }}/Olog/login"
     method: POST
     body_format: json
     body:
-      username: "{{ item.user }}"
+      username: "{{ item.name }}"
       password: "{{ item.password }}"
     status_code: [200, 401]
-  register: olog_auth_check
-  loop:
-    - { user: "{{ olog_admin_user }}", password: "{{ olog_admin_password }}", expect: 200 }
-    - { user: "admin", password: "adminPass", expect: 401 }   # audit: allow - must be refused
-    - { user: "user", password: "userPass", expect: 401 }     # audit: allow - must be refused
+  register: olog_auth_accounts
+  loop: "{{ [{'name': olog_admin_user, 'password': olog_admin_password}] + (olog_users | default([])) }}"
   loop_control:
-    label: "{{ item.user }}"
+    label: "{{ item.name }}"
   no_log: true
   retries: 10
   delay: 3
-  until: olog_auth_check.status in [200, 401]
+  until: olog_auth_accounts.status in [200, 401]
+
+- name: Check that Olog refuses the demo accounts
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ olog_port }}/Olog/login"
+    method: POST
+    body_format: json
+    body:
+      username: "{{ item.name }}"
+      password: "{{ item.password }}"
+    status_code: [200, 401]
+  register: olog_auth_demo
+  loop:
+    - { name: "admin", password: "adminPass" }   # audit: allow - must be refused
+    - { name: "user", password: "userPass" }     # audit: allow - must be refused
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
 
 - name: Stop if Olog authentication is not as expected
   ansible.builtin.fail:
     msg: >-
-      Olog authentication check returned HTTP {{ olog_auth_check.results | map(attribute='status') | list }}
-      for [password from local.yml, demo account admin, demo account user];
-      expected [200, 401, 401]. The password from local.yml must be accepted
-      and Olog's demo accounts refused.
-  when: (olog_auth_check.results | map(attribute='status') | list) != [200, 401, 401]
+      Olog authentication check: configured accounts returned HTTP
+      {{ olog_auth_accounts.results | map(attribute='status') | list }} (expected 200 each),
+      demo accounts returned HTTP {{ olog_auth_demo.results | map(attribute='status') | list }}
+      (expected 401 each).
+  when: >-
+    (olog_auth_accounts.results | map(attribute='status') | reject('equalto', 200) | list | length > 0)
+    or (olog_auth_demo.results | map(attribute='status') | reject('equalto', 401) | list | length > 0)
 
 - name: Seed initial data
   include_tasks: seed_initial_data.yml

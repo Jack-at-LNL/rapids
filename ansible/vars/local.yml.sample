@@ -49,3 +49,14 @@ m_stream: true
 # paste the result here, and run:  vm-setup/update.sh --ask-vault-pass
 # olog_admin_password: !vault |
 #   ...
+
+# Personal Olog accounts (passwords in the vault, one value per user):
+#   ansible-vault encrypt_string 'Password1' --name 'olog_user1_password' >> local.yml
+# olog_users:
+#   - { name: user1, password: "{{ olog_user1_password }}", admin: true }
+#   - { name: user2, password: "{{ olog_user2_password }}" }
+#   - { name: user3, password: "{{ olog_user3_password }}" }
+
+# Firewall: extra ports for this site (Channel Access, PV Access, Olog and the
+# Archiver are opened automatically)
+# rapids_firewall_extra_ports: ['5065/udp']

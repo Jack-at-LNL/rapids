@@ -193,6 +193,20 @@
         - (olog_client_config | default(false) | bool) or (archiver_client_config | default(false) | bool)
       tags: phoebus_client_config
 
+    # RAPIDS: firewall with only the needed ports; MariaDB local only
+    - name: RAPIDS security
+      include_role:
+        name: rapids_security
+      when: rapids_security | default(true) | bool
+      tags: rapids_security
+
+    # RAPIDS: EPICS_BASE and EPICS_HOST_ARCH at login
+    - name: RAPIDS environment
+      include_role:
+        name: rapids_environment
+      when: rapids_environment | default(true) | bool
+      tags: rapids_environment
+
   # Defined at the play level (not inside a role's handlers/main.yml) so it's
   # always registered and notifiable regardless of which per-feature roles
   # are enabled for a given run - training_vm_homepage_dir is living in

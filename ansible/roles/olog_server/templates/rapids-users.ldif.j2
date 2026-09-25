@@ -14,21 +14,27 @@ dn: ou=People,dc=olog,dc=local
 objectClass: organizationalunit
 ou: People
 
-dn: uid={{ olog_admin_user }},ou=People,dc=olog,dc=local
-uid: {{ olog_admin_user }}
+{% set rapids_accounts = [{'name': olog_admin_user, 'password': olog_admin_password, 'admin': true}] + (olog_users | default([])) %}
+{% for u in rapids_accounts %}
+dn: uid={{ u.name }},ou=People,dc=olog,dc=local
+uid: {{ u.name }}
 objectClass: account
 objectClass: posixAccount
-cn: {{ olog_admin_user }}
-description: RAPIDS Olog administrator
-userPassword:: {{ olog_admin_password | b64encode }}
-uidNumber: 23005
-gidNumber: 23005
+cn: {{ u.name }}
+description: RAPIDS Olog {{ 'administrator' if (u.admin | default(false)) else 'user' }}
+userPassword:: {{ u.password | b64encode }}
+uidNumber: {{ 23005 + loop.index0 }}
+gidNumber: {{ 23005 + loop.index0 }}
 homeDirectory: /dev/null
-{% for group in ['olog-admins', 'olog-logs', 'olog-logbooks', 'olog-tags', 'olog-properties'] %}
 
+{% endfor %}
+{% for group in ['olog-admins', 'olog-logs', 'olog-logbooks', 'olog-tags', 'olog-properties'] %}
 dn: cn={{ group }},ou=Group,dc=olog,dc=local
 cn: {{ group }}
 objectClass: posixGroup
 gidNumber: {{ 24001 + loop.index0 }}
-memberUid: {{ olog_admin_user }}
+{% for u in rapids_accounts if (u.admin | default(false)) or group == 'olog-logs' %}
+memberUid: {{ u.name }}
+{% endfor %}
+
 {% endfor %}
