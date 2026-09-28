@@ -104,7 +104,7 @@
   no_log: true
   retries: 10
   delay: 3
-  until: olog_auth_accounts.status in [200, 401]
+  until: olog_auth_accounts.status == 200
 
 - name: Check that Olog refuses the demo accounts
   ansible.builtin.uri:

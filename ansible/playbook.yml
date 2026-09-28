@@ -181,6 +181,8 @@
     - name: Olog server
       include_role:
         name: olog_server
+        apply:
+          tags: [olog_server, olog]
       when: olog_server is defined and olog_server | bool
       tags: [olog_server, olog]
 
@@ -188,6 +190,8 @@
     - name: Phoebus client configuration
       include_role:
         name: phoebus_client_config
+        apply:
+          tags: phoebus_client_config
       when:
         - phoebus is defined and phoebus | bool
         - (olog_client_config | default(false) | bool) or (archiver_client_config | default(false) | bool)
@@ -197,6 +201,8 @@
     - name: RAPIDS security
       include_role:
         name: rapids_security
+        apply:
+          tags: rapids_security
       when: rapids_security | default(true) | bool
       tags: rapids_security
 
@@ -204,6 +210,8 @@
     - name: RAPIDS environment
       include_role:
         name: rapids_environment
+        apply:
+          tags: rapids_environment
       when: rapids_environment | default(true) | bool
       tags: rapids_environment
 
