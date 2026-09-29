@@ -34,6 +34,22 @@ m_stream: true
 # rapids_author_email: "your.email@example.org"
 # rapids_institution: "Your Institution"
 
+# Olog: default logbooks and tags, seeded once at install time (requires
+# olog_server: true). The first logbook is named after the project itself
+# (rapids_project_name, set above) so every entry has a home from day one;
+# the rest reflect how a control room actually files entries. Edit freely -
+# olog_users below still needs its own vault-encrypted passwords.
+# olog_initial_logbooks:
+#   - { name: "{{ rapids_project_name }}", owner: "olog-logs", state: "Active" }
+#   - { name: "operations",    owner: "olog-logs", state: "Active" }
+#   - { name: "commissioning", owner: "olog-logs", state: "Active" }
+#   - { name: "maintenance",   owner: "olog-logs", state: "Active" }
+#   - { name: "faults",        owner: "olog-logs", state: "Active" }
+# olog_initial_tags:
+#   - { name: "follow-up" }
+#   - { name: "resolved" }
+#   - { name: "reference" }
+
 # Time servers (first entry is primary, the others are fallbacks)
 # ntp_servers:
 #   - ntp.example.org

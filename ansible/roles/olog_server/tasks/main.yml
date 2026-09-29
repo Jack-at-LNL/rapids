@@ -23,7 +23,7 @@
     fail_msg: >-
       olog_server is enabled but olog_admin_password is not set, or it is
       the public demonstration password of Olog. Set it in
-      ansible/group_vars/local.yml, preferably encrypted with:
+      ansible/vars/local.yml, preferably encrypted with:
       ansible-vault encrypt_string 'YourPassword' --name 'olog_admin_password'
     quiet: true
   tags:

@@ -5,6 +5,15 @@
 # bookmark" approach hit an unresolved, Fedora-only headless-Firefox
 # compositor bug (SWGL "failed mapping default framebuffer", unaffected by
 # every env var tried) that made CI flaky without ever being fully diagnosed.
+- name: Ensure the Training-VM homepage link fragments directory exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ training_vm_homepage_dir }}/links.d"
+    state: directory
+    owner: "{{ dev_user }}"
+    group: "{{ dev_user }}"
+    mode: "0755"
+
 - name: Add Archiver Appliance link to the Training-VM homepage
   become: true
   ansible.builtin.copy:
