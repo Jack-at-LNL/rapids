@@ -2,37 +2,44 @@
 # RAPIDS - Olog Backup System Setup
 # ============================================================================
 
-- name: Create backup directory
+# NOTE (2026-09-29): backup-now.sh / restore-backup.sh were removed. They only
+# mongodump'd MongoDB + copied config, but Olog's olog-es client stores actual
+# log-entry content in ElasticSearch (logbooks themselves are ES-backed too -
+# confirmed: stopping ES makes GET /Olog/logbooks fail with 500), which the
+# old scripts never touched at all. A real backup needs ElasticSearch's own
+# snapshot API (path.repo + register repository + snapshot alongside
+# mongodump), not a filesystem copy of a live cluster's data directory, which
+# Elastic itself advises against. Proper fix is a separate, tracked task -
+# do not reintroduce a backup script without an actually-tested restore path.
+
+- name: Remove the old backup script if a previous run installed it
   file:
-    path: "{{ olog_backup_dir }}"
-    state: directory
-    mode: '0700'
-    owner: root
-    group: root
+    path: "{{ olog_install_dir }}/scripts/backup-now.sh"
+    state: absent
+  become: yes
+
+- name: Remove the old restore script if a previous run installed it
+  file:
+    path: "{{ olog_install_dir }}/scripts/restore-backup.sh"
+    state: absent
+  become: yes
+
+- name: Remove the old backup cron job if a previous run installed it
+  cron:
+    name: "Olog daily backup"
+    state: absent
+  become: yes
+
+- name: Remove the old backup cleanup cron job if a previous run installed it
+  cron:
+    name: "Olog backup cleanup"
+    state: absent
   become: yes
 
 - name: Create scripts directory
   file:
     path: "{{ olog_install_dir }}/scripts"
     state: directory
-    mode: '0755'
-    owner: root
-    group: root
-  become: yes
-
-- name: Install backup script
-  template:
-    src: scripts/backup-now.sh.j2
-    dest: "{{ olog_install_dir }}/scripts/backup-now.sh"
-    mode: '0755'
-    owner: root
-    group: root
-  become: yes
-
-- name: Install restore script
-  template:
-    src: scripts/restore-backup.sh.j2
-    dest: "{{ olog_install_dir }}/scripts/restore-backup.sh"
     mode: '0755'
     owner: root
     group: root
@@ -60,50 +67,26 @@
   copy:
     content: |
       # Olog Maintenance Scripts
-      
-      Installed by RAPIDS Ansible deployment
-      
+
+      Installed by RAPIDS Ansible deployment.
+
       ## Available Scripts
-      
-      - backup-now.sh          - Manual backup
-      - restore-backup.sh      - Restore from backup
-      - manage-logbooks.sh     - Logbook management
-      - manage-tags.sh         - Tag management
-      
+
+      - manage-logbooks.sh     - Logbook management (add/delete/list)
+      - manage-tags.sh         - Tag management (add/delete/list)
+
+      No backup system is currently installed - see doc/rapids/olog-server.md.
+
       ## Usage
-      
-      See main documentation: /home/epics-dev/training/docs/README-OLOG.md
+
+      See doc/rapids/olog-server.md in the RAPIDS repository.
     dest: "{{ olog_install_dir }}/scripts/README.txt"
     mode: '0644'
   become: yes
 
-- name: Create backup cron job
-  cron:
-    name: "Olog daily backup"
-    minute: "{{ olog_backup_cron_minute }}"
-    hour: "{{ olog_backup_cron_hour }}"
-    day: "{{ olog_backup_cron_day }}"
-    job: "{{ olog_install_dir }}/scripts/backup-now.sh >> /var/log/olog/backup.log 2>&1"
-    user: root
-    state: present
-  become: yes
-
-- name: Create backup cleanup cron job
-  cron:
-    name: "Olog backup cleanup"
-    minute: "0"
-    hour: "3"
-    day: "*"
-    job: "find {{ olog_backup_dir }} -name '*.tar.gz' -mtime +{{ olog_backup_retention_days }} -delete"
-    user: root
-    state: present
-  become: yes
-
-- name: Display backup setup complete
+- name: Display management scripts installed
   debug:
     msg:
-      - "✅ Backup system configured"
+      - "✅ Olog management scripts installed"
       - "Scripts: {{ olog_install_dir }}/scripts/"
-      - "Backup dir: {{ olog_backup_dir }}"
-      - "Schedule: Daily at {{ olog_backup_cron_hour }}:{{ olog_backup_cron_minute }}"
-      - "Retention: {{ olog_backup_retention_days }} days"
+      - "⚠️  No backup system is configured - see the note above install_olog tasks"
