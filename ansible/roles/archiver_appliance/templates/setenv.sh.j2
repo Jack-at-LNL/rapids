@@ -92,9 +92,9 @@ export ARCHAPPL_POLICIES="{{ tomcat_home }}/archappl_conf/policies.py"
 
 # location of the short term, mid term and long term stores
 # this is necessary only if your policy demands it
-export ARCHAPPL_SHORT_TERM_FOLDER="{{ archiver_appliance_storage }}/sts"
-export ARCHAPPL_MEDIUM_TERM_FOLDER="{{ archiver_appliance_storage }}/mts"
-export ARCHAPPL_LONG_TERM_FOLDER="{{ archiver_appliance_storage }}/lts"
+export ARCHAPPL_SHORT_TERM_FOLDER="{{ archiver_appliance_storage_sts }}"
+export ARCHAPPL_MEDIUM_TERM_FOLDER="{{ archiver_appliance_storage_mts }}"
+export ARCHAPPL_LONG_TERM_FOLDER="{{ archiver_appliance_storage_lts }}"
 
 # EPICS variables
 export EPICS_HOST_ARCH={{ arch.epics_host_arch }}

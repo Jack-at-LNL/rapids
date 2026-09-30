@@ -28,18 +28,25 @@
     file: install_appliance.yml
   when: archiver_appliance_installation.stat.exists == false
 
-- name: Ensure storage and configuration directories exist
+- name: Ensure the Archiver Appliance configuration directory exists
   become: true
   ansible.builtin.file:
-    path: "{{ tomcat_home }}/{{ item }}"
+    path: "{{ tomcat_home }}/archappl_conf"
+    state: directory
+    owner: "{{ tomcat_user }}"
+    group: "{{ tomcat_group }}"
+
+- name: Ensure the Archiver Appliance storage directories exist (STS/MTS/LTS)
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
     state: directory
     owner: "{{ tomcat_user }}"
     group: "{{ tomcat_group }}"
   loop:
-    - storage/sts
-    - storage/mts
-    - storage/lts
-    - archappl_conf
+    - "{{ archiver_appliance_storage_sts }}"
+    - "{{ archiver_appliance_storage_mts }}"
+    - "{{ archiver_appliance_storage_lts }}"
 
 - name: Configure Archiver Appliance - appliances.xml
   become: true
@@ -54,8 +61,8 @@
 
 - name: Configure Archiver Appliance - policies.py
   become: true
-  ansible.builtin.copy:
-    src: "{{ archiver_appliance_policies_file }}"
+  ansible.builtin.template:
+    src: rapids-policies.py.j2
     dest: "{{ tomcat_home }}/archappl_conf/policies.py"
     owner: "{{ tomcat_user }}"
     group: "{{ tomcat_group }}"

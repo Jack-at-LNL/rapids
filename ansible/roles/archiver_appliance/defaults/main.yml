@@ -9,7 +9,23 @@ tomcat_group: tomcat
 archiver_appliance_version: "2.0.7"
 
 archiver_appliance_id: "appliance0"
-archiver_appliance_storage: "{{ tomcat_home }}/storage"
+
+# Storage: each tier is independently overridable in local.yml (e.g. point only
+# the LTS at a large NFS mount while keeping STS/MTS on fast local disk - the
+# EPICS Archiver Appliance community's own documented pattern). Changing these
+# after PVs are already archived does NOT migrate existing data - each PV's
+# storage path is persisted into MariaDB at archive time. Set these before
+# archiving real PVs, not after.
+archiver_appliance_storage: "/var/lib/archiver-appliance"
+archiver_appliance_storage_sts: "{{ archiver_appliance_storage }}/sts"
+archiver_appliance_storage_mts: "{{ archiver_appliance_storage }}/mts"
+archiver_appliance_storage_lts: "{{ archiver_appliance_storage }}/lts"
+
+# Retention (Default policy). MTS holds this many days before data moves to
+# LTS; LTS has no hold and is never rotated - this is intentional (RAPIDS
+# philosophy: never silently discard archived data).
+archiver_appliance_mts_hold_days: 7
+archiver_appliance_lts_partition_granularity: "PARTITION_MONTH"
 
 # JAVA options
 archiver_appliance_java_maxmetaspace: "256M"
@@ -29,5 +45,3 @@ archiver_appliance_http_port: 17665
 archiver_appliance_base_url: "http://{{ archiver_appliance_host }}:{{ archiver_appliance_http_port }}"
 # Cluster address: a single appliance talks only to itself
 archiver_appliance_cluster_inetport: "localhost:16670"
-# Archiving policies file (in files/); RAPIDS uses rapids-policies.py
-archiver_appliance_policies_file: "policies.py"
