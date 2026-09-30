@@ -1,0 +1,15 @@
+---
+- name: Run the RAPIDS Archiver healthcheck now that every role has finished
+  become: true
+  become_user: "{{ dev_user }}"
+  ansible.builtin.command:
+    cmd: "bash -l {{ archiver_appliance_healthcheck_dir | default('/opt/epics-tools/archiver/scripts') }}/rapids_archiver_healthcheck.sh --no-restart"
+  register: archiver_healthcheck_result
+  changed_when: false
+  failed_when: false
+  when: archiver_appliance | default(false) | bool
+
+- name: Show the Archiver healthcheck result
+  ansible.builtin.debug:
+    msg: "{{ archiver_healthcheck_result.stdout_lines[-6:] }}"
+  when: archiver_appliance | default(false) | bool
