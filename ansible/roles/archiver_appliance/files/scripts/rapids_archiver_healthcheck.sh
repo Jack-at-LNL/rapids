@@ -1,0 +1,199 @@
+#!/usr/bin/env bash
+# =============================================================================
+# rapids_archiver_tests.sh
+# RAPIDS - tests of the EPICS Archiver Appliance on an installed machine
+# (test plan 25 Sep 2026)
+#
+#   V   component versions (for the record)
+#   A1  services, ports, appliance identity
+#   A2  management page with the RAPIDS footer
+#   A3  end-to-end archiving: a soft IOC (softIocPVX) serves
+#         rapids:test:counter (+1 every second)  -> archived over PV Access (A7)
+#         rapids:test:noise   (random, 2 Hz)      -> archived over Channel Access
+#       PVs added through the management interface, status 'Being archived',
+#       data read back through the retrieval interface and checked
+#   A5a data and PV list survive an archiver restart
+#   A8  short-term storage files present and growing
+#   A9  exposure and credentials: MariaDB listen address, default database
+#       password, management interface without login
+#
+# The soft IOC is left RUNNING (pid in ~/archiver-test-ioc.pid) so that the
+# PVs keep being archived for the later tests (update.sh, reboot, disconnection).
+#   bash ~/rapids_archiver_tests.sh               # all tests (about 5 minutes)
+#   bash ~/rapids_archiver_tests.sh --no-restart  # skip A5a
+#   bash ~/rapids_archiver_tests.sh --stop-ioc    # only stop the test IOC
+# Report: ~/archiver-tests-<date>.txt
+# =============================================================================
+set -u
+AA=${AA_URL:-http://localhost:17665}
+TOMCAT=/opt/epics-tools/lib/tomcat
+STS=$TOMCAT/storage/sts
+PIDFILE=~/archiver-test-ioc.pid
+DB=~/archiver-test-ioc.db
+PV_CNT=rapids:test:counter
+PV_NOISE=rapids:test:noise
+REPORT=~/archiver-tests-$(date +%Y%m%d-%H%M).txt
+DO_RESTART=yes
+for a in "$@"; do
+    case "$a" in
+      --no-restart) DO_RESTART=no;;
+      --stop-ioc) [ -f "$PIDFILE" ] && kill "$(cat "$PIDFILE")" 2>/dev/null && rm -f "$PIDFILE" && echo "test IOC stopped"; exit 0;;
+    esac
+done
+PASS=0; FAIL=0; WARN=0
+exec > >(tee "$REPORT") 2>&1
+ok()   { echo "  [PASS] $*"; PASS=$((PASS+1)); }
+bad()  { echo "  [FAIL] $*"; FAIL=$((FAIL+1)); }
+warn() { echo "  [WARN] $*"; WARN=$((WARN+1)); }
+info() { echo "  [INFO] $*"; }
+py()   { python3 -c "import sys,json
+try: d=json.load(sys.stdin)
+except Exception: sys.exit(0)
+$1" 2>/dev/null; }
+status_of() { curl -s "$AA/mgmt/bpl/getPVStatus?pv=$1" | py 'print(d[0].get("status","") if isinstance(d,list) and d else "")'; }
+
+echo "RAPIDS Archiver Appliance tests - $(date) - $AA"
+wait_ready() {  # the four web applications need about a minute after a (re)start
+    printf "  waiting until the Archiver answers "
+    for i in $(seq 1 36); do
+        [ "$(curl -s "$AA/mgmt/bpl/getApplianceInfo?id=appliance0" | py 'print(d.get("identity",""))')" = appliance0 ] && { echo " ready"; return 0; }
+        printf "."; sleep 5
+    done; echo " NOT ready after 3 minutes"; return 1
+}
+wait_ready || true
+
+# ----------------------------------------------------------------- V
+echo; echo "V  Component versions"
+info "EPICS Base:     $(sed -n 's/^EPICS_BASE *= *//p' /opt/epics/RELEASE.local 2>/dev/null)"
+info "Archiver:       $(curl -s "$AA/mgmt/bpl/getVersions" | py 'print(", ".join(f"{k}={v}" for k,v in d.items()) if isinstance(d,dict) else d)' || true)"
+info "Tomcat:         $(sudo "$TOMCAT/bin/version.sh" 2>/dev/null | sed -n 's/^Server version: *//p')"
+info "MariaDB:        $(mariadb --version 2>/dev/null || mysql --version 2>/dev/null)"
+info "Olog:           $(curl -s http://localhost:8080/Olog | py 'print(d.get("version"), "| Elastic:", (d.get("elastic") or {}).get("status"), "| Mongo:", "connected" if "CONNECTED" in str(d.get("mongoDB")) else "NOT connected")')"
+info "ElasticSearch:  $(curl -s http://localhost:9200 | py 'print(d["version"]["number"])')"
+info "MongoDB:        $(mongod --version 2>/dev/null | head -1)"
+info "Java (Phoebus): $(/opt/epics-tools/lib/jvm/jdk-21/bin/java -version 2>&1 | head -1)"
+info "Phoebus:        $(ls /opt/epics-tools/lib/phoebus/phoebus-product/target/lib/core-launcher-*.jar 2>/dev/null | head -1 | sed 's/.*core-launcher-//; s/\.jar$//')"
+
+# ----------------------------------------------------------------- A1
+echo; echo "A1 Services, ports, identity"
+for s in archiver-appliance mariadb; do
+    a=$(systemctl is-active "$s" 2>/dev/null); e=$(systemctl is-enabled "$s" 2>/dev/null)
+    [ "$a" = active ] && [ "$e" = enabled ] && ok "$s active and enabled" || bad "$s: active=$a enabled=$e"
+done
+for p in 17665 16670 3306; do
+    addrs=$(ss -Hltn "sport = :$p" 2>/dev/null | awk '{print $4}' | sort -u | tr '\n' ' ')
+    info "port $p listens on: ${addrs:-nothing}"
+done
+ident=$(curl -s "$AA/mgmt/bpl/getApplianceInfo?id=appliance0" | py 'print(d.get("identity",""))')
+[ "$ident" = appliance0 ] && ok "management interface answers; identity $ident" || bad "getApplianceInfo did not answer as expected"
+
+# ----------------------------------------------------------------- A2
+echo; echo "A2 Management page"
+page=$(curl -s "$AA/mgmt/ui/index.html")
+echo "$page" | grep -q "RAPIDS FOOTER" && ok "RAPIDS footer present" || bad "RAPIDS footer missing"
+echo "$page" | grep -q "@begin(site_contact_text)" && ok "site contact block present" || warn "site contact block not found"
+
+# ----------------------------------------------------------------- A3
+echo; echo "A3 End-to-end archiving (A7: counter over PV Access, noise over Channel Access)"
+if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+    info "test IOC already running (pid $(cat "$PIDFILE"))"
+else
+    cat > "$DB" <<EOF
+record(calc, "$PV_CNT") { field(SCAN, "1 second") field(CALC, "A+1") field(INPA, "$PV_CNT") }
+record(calc, "$PV_NOISE") { field(SCAN, ".5 second") field(CALC, "RNDM*10") field(PREC, "3") }
+EOF
+    if command -v softIocPVX >/dev/null; then
+        nohup softIocPVX -S -d "$DB" > ~/archiver-test-ioc.log 2>&1 &
+        echo $! > "$PIDFILE"; sleep 3
+        caget -t -w 5 "$PV_CNT" >/dev/null 2>&1 && ok "test IOC started (pid $(cat "$PIDFILE"))" || bad "test IOC does not answer"
+    else
+        bad "softIocPVX not found (run in a login shell: bash -l)"
+    fi
+fi
+r1=$(curl -s "$AA/mgmt/bpl/archivePV?pv=$PV_CNT"        | py 'print(d[0].get("status","") if isinstance(d,list) else d)')
+r2=$(curl -s "$AA/mgmt/bpl/archivePV?pv=ca://$PV_NOISE" | py 'print(d[0].get("status","") if isinstance(d,list) else d)')
+for x in "$PV_CNT:$r1" "ca://$PV_NOISE:$r2"; do
+    st=${x##*:}; nm=${x%:*}
+    [ -n "$st" ] && info "archive request $nm: $st" || bad "archive request $nm: no answer from the management interface"
+done
+printf "  waiting for 'Being archived' (the archiver samples each new PV for about a minute) "
+for i in $(seq 1 36); do
+    s1=$(status_of "$PV_CNT"); s2=$(status_of "$PV_NOISE")
+    [ "$s1" = "Being archived" ] && [ "$s2" = "Being archived" ] && break
+    printf "."; sleep 5
+done; echo
+[ "$s1" = "Being archived" ] && ok "$PV_CNT: Being archived (PV Access)"   || bad "$PV_CNT status: $s1"
+[ "$s2" = "Being archived" ] && ok "$PV_NOISE: Being archived (Channel Access)" || bad "$PV_NOISE status: $s2"
+echo "  collecting data for 40 s ..."; sleep 40
+FROM=$(date -u -d '-10 minutes' +%Y-%m-%dT%H:%M:%S.000Z); TO=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
+getdata() { curl -s "$AA/retrieval/data/getData.json?pv=$1&from=$FROM&to=$TO"; }
+# The retrieval interface also returns the last sample BEFORE 'from' as the first
+# point; counts must use only the samples whose time lies inside the window.
+FROM_S=$(date -u -d "${FROM%.000Z}" +%s); TO_S=$(date -u -d "${TO%.000Z}" +%s)
+inwin() { python3 -c "import sys,json
+try: d=json.load(sys.stdin)
+except Exception: print(0); sys.exit(0)
+print(sum(1 for s in (d[0]['data'] if d else []) if $FROM_S <= s['secs'] <= $TO_S))"; }
+cnt=$(getdata "$PV_CNT" | py '
+v=[s["val"] for s in d[0]["data"] if '"$FROM_S"' <= s["secs"] <= '"$TO_S"'] if d else []
+inc=all(b>a for a,b in zip(v,v[1:]))
+print(len(v), "increasing" if inc else "NOT-increasing", v[0] if v else "", v[-1] if v else "")')
+n=${cnt%% *}
+if [ "${n:-0}" -ge 20 ] && [[ "$cnt" == *" increasing"* ]]; then ok "$PV_CNT retrieved: $cnt (samples, order, first, last)"
+else bad "$PV_CNT retrieval: ${cnt:-no data}"; fi
+noi=$(getdata "$PV_NOISE" | py '
+v=[s["val"] for s in d[0]["data"]] if d else []
+print(len(v), min(v) if v else "", max(v) if v else "")')
+n=${noi%% *}
+[ "${n:-0}" -ge 20 ] && ok "$PV_NOISE retrieved: $noi (samples, min, max)" || bad "$PV_NOISE retrieval: ${noi:-no data}"
+OLDFROM=$(date -u -d '-3 hours' +%Y-%m-%dT%H:%M:%S.000Z)
+old=$(curl -s "$AA/retrieval/data/getData.json?pv=$PV_CNT&from=$OLDFROM&to=$FROM" | py 'print(len(d[0]["data"]) if d else 0)')
+info "$PV_CNT samples older than 10 minutes (last 3 hours): ${old:-0}"
+curl -s "$AA/mgmt/bpl/getAllPVs" | grep -q "$PV_CNT" && ok "PV list contains the test PVs" || bad "test PVs missing from getAllPVs"
+
+# ----------------------------------------------------------------- A8
+echo; echo "A8 Short-term storage"
+f1=$(sudo find "$STS" -name '*.pb' -path '*rapids*' 2>/dev/null | head -3)
+if [ -n "$f1" ]; then
+    s_a=$(sudo du -sb "$STS" | cut -f1); sleep 15; s_b=$(sudo du -sb "$STS" | cut -f1)
+    ok "STS files present:"; echo "$f1" | sed 's/^/         /'
+    [ "$s_b" -gt "$s_a" ] && ok "STS growing ($s_a -> $s_b bytes in 15 s)" || warn "STS size unchanged in 15 s ($s_a bytes; data may still be buffered)"
+    info "owner and mode: $(sudo stat -c '%U:%G %a' "$STS")"
+else bad "no STS files for the test PVs under $STS"; fi
+
+# ----------------------------------------------------------------- A5a
+echo; echo "A5a Persistence across an archiver restart"
+if [ "$DO_RESTART" = yes ]; then
+    before=$(getdata "$PV_CNT" | inwin)
+    sudo systemctl restart archiver-appliance
+    sleep 5; wait_ready || true
+    printf "  waiting for the archiver "
+    for i in $(seq 1 60); do
+        [ "$(status_of "$PV_CNT")" = "Being archived" ] && break; printf "."; sleep 5
+    done; echo
+    [ "$(status_of "$PV_CNT")" = "Being archived" ] && ok "archiving resumed after restart" || bad "PV not 'Being archived' after restart"
+    after=$(getdata "$PV_CNT" | inwin)
+    [ "${after:-0}" -ge "${before:-1}" ] && ok "data before the restart still retrievable ($before -> $after samples)" || bad "samples lost across restart ($before -> $after)"
+else info "skipped (--no-restart)"; fi
+
+# ----------------------------------------------------------------- A9
+echo; echo "A9 Exposure and credentials"
+m=$(ss -Hltn "sport = :3306" 2>/dev/null | awk '{print $4}' | tr '\n' ' ')
+echo "$m" | grep -qE '(0\.0\.0\.0|\*|\[::\]):3306' && warn "MariaDB listens on all interfaces ($m); firewall must block 3306" || ok "MariaDB listens only locally (${m:-socket only})"
+sudo firewall-cmd --list-ports 2>/dev/null | grep -q 3306 && bad "3306 open in the firewall" || ok "3306 not open in the firewall"
+if ! command -v mariadb >/dev/null 2>&1; then info "mariadb client not installed: default-password check skipped"
+elif mariadb -h 127.0.0.1 -u archappl -parchappl -e 'select 1' archappl >/dev/null 2>&1; then   # audit: allow
+    warn "database still uses the upstream default password (user archappl)"
+else ok "upstream default database password not accepted"; fi
+c=$(curl -s -o /dev/null -w "%{http_code}" "$AA/mgmt/bpl/getAllPVs")
+[ "$c" = 200 ] && warn "management interface answers without login (HTTP $c): limit network access to the control network" || info "management interface: HTTP $c"
+
+# ----------------------------------------------------------------- logs
+echo; echo "Log scan (last hour)"
+n=$(sudo journalctl -u archiver-appliance --since "-1h" -p err --no-pager 2>/dev/null | grep -vc '^-- ')
+info "journal errors for archiver-appliance: $n"
+n=$(sudo find /var/log/tomcat -type f -mmin -60 -exec grep -h -c ' ERROR ' {} + 2>/dev/null | awk '{s+=$1} END {print s+0}')
+info "ERROR lines in /var/log/tomcat modified in the last hour: ${n:-0}"
+
+echo; echo "Test IOC still running (pid $(cat "$PIDFILE" 2>/dev/null)); stop with: bash ~/rapids_archiver_tests.sh --stop-ioc"
+echo "SUMMARY: PASS=$PASS FAIL=$FAIL WARN=$WARN   report: $REPORT"

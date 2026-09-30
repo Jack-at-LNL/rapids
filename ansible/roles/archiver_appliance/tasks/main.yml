@@ -139,3 +139,25 @@
   when: not in_container and install_graphics | bool
   ansible.builtin.include_tasks:
     file: add_homepage_link.yml
+
+- name: Install the RAPIDS Archiver healthcheck script
+  become: true
+  ansible.builtin.copy:
+    src: scripts/rapids_archiver_healthcheck.sh
+    dest: "{{ archiver_appliance_healthcheck_dir | default('/opt/epics-tools/archiver/scripts') }}/rapids_archiver_healthcheck.sh"
+    owner: "{{ dev_user }}"
+    group: "{{ dev_user }}"
+    mode: "0755"
+
+- name: Run the healthcheck once, right after install, so a fresh system verifies itself immediately
+  become: true
+  become_user: "{{ dev_user }}"
+  ansible.builtin.command:
+    cmd: "bash -l {{ archiver_appliance_healthcheck_dir | default('/opt/epics-tools/archiver/scripts') }}/rapids_archiver_healthcheck.sh --no-restart"
+  register: archiver_healthcheck_result
+  changed_when: false
+  failed_when: false
+
+- name: Show the healthcheck result
+  ansible.builtin.debug:
+    msg: "{{ archiver_healthcheck_result.stdout_lines[-6:] }}"
