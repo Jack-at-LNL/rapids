@@ -27,7 +27,8 @@
 set -u
 AA=${AA_URL:-http://localhost:17665}
 TOMCAT=/opt/epics-tools/lib/tomcat
-STS=$TOMCAT/storage/sts
+STS=$(sed -n "s/^export ARCHAPPL_SHORT_TERM_FOLDER=\"\(.*\)\"/\1/p" "$TOMCAT/bin/setenv.sh" 2>/dev/null)
+STS=${STS:-$TOMCAT/storage/sts}
 PIDFILE=~/archiver-test-ioc.pid
 DB=~/archiver-test-ioc.db
 PV_CNT=rapids:test:counter
