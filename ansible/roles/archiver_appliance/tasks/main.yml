@@ -140,6 +140,15 @@
   ansible.builtin.include_tasks:
     file: add_homepage_link.yml
 
+- name: Ensure the RAPIDS Archiver scripts directory exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ archiver_appliance_healthcheck_dir | default('/opt/epics-tools/archiver/scripts') }}"
+    state: directory
+    owner: "{{ dev_user }}"
+    group: "{{ dev_user }}"
+    mode: "0755"
+
 - name: Install the RAPIDS Archiver healthcheck script
   become: true
   ansible.builtin.copy:
