@@ -8,8 +8,8 @@
 #   A1  services, ports, appliance identity
 #   A2  management page with the RAPIDS footer
 #   A3  end-to-end archiving: a soft IOC (softIocPVX) serves
-#         rapids:test:counter (+1 every second)  -> archived over PV Access (A7)
-#         rapids:test:noise   (random, 2 Hz)      -> archived over Channel Access
+#         <project>:<instance>:healthcheck:counter (+1 every second) -> archived over PV Access (A7)
+#         <project>:<instance>:healthcheck:noise   (random, 2 Hz)     -> archived over Channel Access
 #       PVs added through the management interface, status 'Being archived',
 #       data read back through the retrieval interface and checked
 #   A5a data and PV list survive an archiver restart
@@ -31,8 +31,8 @@ STS=$(sed -n "s/^export ARCHAPPL_SHORT_TERM_FOLDER=\"\(.*\)\"/\1/p" "$TOMCAT/bin
 STS=${STS:-$TOMCAT/storage/sts}
 PIDFILE=~/archiver-test-ioc.pid
 DB=~/archiver-test-ioc.db
-PV_CNT=rapids:test:counter
-PV_NOISE=rapids:test:noise
+PV_CNT={{ rapids_project_name }}:{{ rapids_instance_name | default('vm') }}:healthcheck:counter
+PV_NOISE={{ rapids_project_name }}:{{ rapids_instance_name | default('vm') }}:healthcheck:noise
 REPORT=~/archiver-tests-$(date +%Y%m%d-%H%M).txt
 DO_RESTART=yes
 for a in "$@"; do

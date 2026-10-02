@@ -34,6 +34,16 @@ m_stream: true
 # rapids_author_email: "your.email@example.org"
 # rapids_institution: "Your Institution"
 
+# Unique per-instance identifier. REQUIRED if you declare any PV-producing
+# feature (rapids_managed_iocs, the Archiver healthcheck, etc.) on a network
+# where more than one RAPIDS installation may run at the same time. Without
+# it, two installs of the same project would serve PVs with identical names
+# (e.g. two "My Project:healthcheck:counter"), and EPICS clients could
+# connect to either one unpredictably. Give each VM/installation its own
+# value, e.g. the hostname or a short site/unit label - never the project
+# name itself.
+# rapids_instance_name: "vm01"
+
 # Olog: default logbooks and tags, seeded once at install time (requires
 # olog_server: true). The first logbook is named after the project itself
 # (rapids_project_name, set above) so every entry has a home from day one;
