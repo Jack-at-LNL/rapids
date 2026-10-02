@@ -1,0 +1,110 @@
+---
+- name: Ensure the self-check IOC's working directory exists
+  ansible.builtin.file:
+    path: "{{ rapids_procserv_iocs_dir }}/procserv-selfcheck"
+    state: directory
+    owner: "{{ dev_user }}"
+    group: "{{ dev_user }}"
+    mode: "0755"
+
+- name: Render the self-check sine-wave IOC database
+  ansible.builtin.template:
+    src: selfcheck.db.j2
+    dest: "{{ rapids_procserv_iocs_dir }}/procserv-selfcheck/selfcheck.db"
+    owner: "{{ dev_user }}"
+    group: "{{ dev_user }}"
+    mode: "0644"
+
+- name: Locate softIocPVX for the self-check
+  ansible.builtin.command:
+    cmd: bash -l -c "which softIocPVX"
+  become: true
+  become_user: "{{ dev_user }}"
+  register: rapids_procserv_softioc_path
+  changed_when: false
+
+- name: Remove any previous self-check instance (clean slate)
+  become: true
+  ansible.builtin.command:
+    cmd: "{{ rapids_procserv_prefix }}/bin/manage-procs --system remove procserv-selfcheck -f"
+  environment:
+    PATH: "{{ rapids_procserv_prefix }}/bin:{{ ansible_env.PATH }}"
+    PYTHONPATH: "{{ rapids_procserv_prefix }}/lib/python{{ ansible_python.version.major }}.{{ ansible_python.version.minor }}/site-packages"
+  register: rapids_procserv_selfcheck_remove
+  changed_when: "'Removed' in rapids_procserv_selfcheck_remove.stdout"
+  failed_when: false
+
+- name: Add the self-check instance
+  become: true
+  ansible.builtin.command:
+    cmd: >-
+      {{ rapids_procserv_prefix }}/bin/manage-procs --system add
+      -C {{ rapids_procserv_iocs_dir }}/procserv-selfcheck
+      -P {{ rapids_procserv_selfcheck_port }}
+      -U {{ dev_user }} -G {{ dev_user }} -A procserv-selfcheck
+      {{ rapids_procserv_softioc_path.stdout }} -S -d selfcheck.db
+  environment:
+    PATH: "{{ rapids_procserv_prefix }}/bin:{{ ansible_env.PATH }}"
+    PYTHONPATH: "{{ rapids_procserv_prefix }}/lib/python{{ ansible_python.version.major }}.{{ ansible_python.version.minor }}/site-packages"
+
+- name: Read back the generated unit file
+  ansible.builtin.slurp:
+    src: /etc/procServ.d/procserv-selfcheck.service
+  register: rapids_procserv_selfcheck_unit
+
+- name: Check whether the self-check unit's ExecStart resolved correctly
+  ansible.builtin.set_fact:
+    rapids_procserv_selfcheck_unit_ok: "{{ 'ExecStart=None' not in (rapids_procserv_selfcheck_unit.content | b64decode) }}"
+
+- name: Verify the self-check PV is genuinely reachable over the network
+  when: rapids_procserv_selfcheck_unit_ok
+  become: true
+  become_user: "{{ dev_user }}"
+  ansible.builtin.command:
+    cmd: >-
+      bash -l -c "caget -t -w 3
+      {{ rapids_project_name }}:{{ rapids_instance_name | default('vm') }}:procserv-selfcheck:sine"
+  register: rapids_procserv_selfcheck_caget
+  until: rapids_procserv_selfcheck_caget.rc == 0
+  retries: 8
+  delay: 3
+  changed_when: false
+  failed_when: false
+
+- name: Determine overall self-check result
+  ansible.builtin.set_fact:
+    rapids_procserv_selfcheck_failed: >-
+      {{ not rapids_procserv_selfcheck_unit_ok
+         or rapids_procserv_selfcheck_caget is not defined
+         or rapids_procserv_selfcheck_caget.rc | default(1) != 0 }}
+
+- name: WARNING - procServ self-check failed
+  when: rapids_procserv_selfcheck_failed | bool
+  ansible.builtin.debug:
+    msg:
+      - "procServ SELF-CHECK FAILED"
+      - "procServ and/or manage-procs do not appear to be working correctly on this VM."
+      - "{{ 'Cause: the generated systemd unit could not resolve procServ-launcher (ExecStart=None).' if not rapids_procserv_selfcheck_unit_ok else 'Cause: the self-check PV did not answer caget after repeated attempts.' }}"
+      - "The install is CONTINUING. See procserv-manual.md, section Troubleshooting, before relying on this feature."
+
+- name: Report the self-check result
+  when: not (rapids_procserv_selfcheck_failed | bool)
+  ansible.builtin.debug:
+    msg: >-
+      procServ self-check passed -
+      {{ rapids_project_name }}:{{ rapids_instance_name | default('vm') }}:procserv-selfcheck:sine
+      answered: {{ rapids_procserv_selfcheck_caget.stdout }}
+
+- name: Stop the self-check instance
+  become: true
+  ansible.builtin.systemd:
+    name: procserv-selfcheck
+    state: stopped
+  failed_when: false
+
+- name: Disable the self-check instance
+  become: true
+  ansible.builtin.systemd:
+    name: procserv-selfcheck
+    enabled: false
+  failed_when: false

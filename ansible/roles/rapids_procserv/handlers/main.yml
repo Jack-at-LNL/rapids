@@ -1,0 +1,5 @@
+---
+- name: Reload systemd for procServ
+  become: true
+  ansible.builtin.systemd:
+    daemon_reload: true

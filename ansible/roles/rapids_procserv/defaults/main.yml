@@ -1,0 +1,22 @@
+---
+# procServ: a process supervisor that lets an EPICS IOC run as a properly
+# managed, reboot-surviving systemd service, with telnet console access for
+# the standard EPICS community "attach to the IOC shell" workflow.
+#
+# This role installs procServ and manage-procs (the official systemd
+# integration from https://github.com/ralphlange/procServ) and makes them
+# available on the command line. It runs one self-disabling verification
+# check to prove the installation genuinely works, then steps back
+# entirely: RAPIDS does not create, own, or manage the lifecycle of any
+# production IOC. Use manage-procs directly, exactly as on any EPICS
+# workstation - see doc/rapids/procserv-manual.md.
+
+rapids_procserv_version: "2.8.0"
+rapids_procserv_url: "https://github.com/ralphlange/procServ/releases/download/v{{ rapids_procserv_version }}/procServ-{{ rapids_procserv_version }}.tar.gz"
+
+rapids_procserv_prefix: "/usr/local"
+
+rapids_procserv_selfcheck: true
+rapids_procserv_selfcheck_port: 4051
+
+rapids_procserv_iocs_dir: "/opt/epics-tools/iocs"
