@@ -154,7 +154,7 @@
     - name: Verify manage-procs is installed and can locate procServ-launcher
       ansible.builtin.command:
         cmd: >-
-          {{ rapids_procserv_prefix }}/bin/python3 -c
+          python3 -c
           "from procServUtils.generator import which; print(which('procServ-launcher'))"
       environment:
         PATH: "{{ rapids_procserv_prefix }}/bin:{{ ansible_env.PATH }}"
