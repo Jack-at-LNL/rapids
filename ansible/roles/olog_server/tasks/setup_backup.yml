@@ -90,3 +90,43 @@
       - "✅ Olog management scripts installed"
       - "Scripts: {{ olog_install_dir }}/scripts/"
       - "⚠️  No backup system is configured - see the note above install_olog tasks"
+
+- name: Install the RAPIDS Olog healthcheck script
+  copy:
+    src: scripts/rapids_olog_healthcheck.sh
+    dest: "{{ olog_install_dir }}/scripts/rapids_olog_healthcheck.sh"
+    mode: '0755'
+    owner: root
+    group: root
+  become: yes
+
+# Non-interactive: OLOG_PASSWORD is passed via environment so the script
+# never hits its interactive 'read -rs -p' prompt, which would hang here.
+# --no-restart because restarting Olog mid-install is disruptive and O6a
+# (restart persistence) is better exercised manually, later, if needed.
+- name: Run the Olog healthcheck
+  command: "bash {{ olog_install_dir }}/scripts/rapids_olog_healthcheck.sh --no-restart"
+  environment:
+    OLOG_PASSWORD: "{{ olog_admin_password }}"
+  become: yes
+  become_user: "{{ dev_user }}"
+  register: olog_healthcheck_result
+  changed_when: false
+  failed_when: false
+
+- name: Determine whether the Olog healthcheck failed
+  set_fact:
+    olog_healthcheck_failed: "{{ 'FAIL=0' not in (olog_healthcheck_result.stdout | default('')) }}"
+
+- name: WARNING - Olog healthcheck failed
+  when: olog_healthcheck_failed | bool
+  debug:
+    msg:
+      - "Olog HEALTHCHECK reported failures - see the report above/below for details."
+      - "The install is CONTINUING. See doc/rapids/olog-server.md, section Troubleshooting."
+      - "{{ olog_healthcheck_result.stdout_lines[-6:] }}"
+
+- name: Report the Olog healthcheck result
+  when: not (olog_healthcheck_failed | bool)
+  debug:
+    msg: "{{ olog_healthcheck_result.stdout_lines[-3:] }}"
