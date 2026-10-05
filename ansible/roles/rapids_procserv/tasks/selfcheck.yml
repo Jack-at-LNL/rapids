@@ -26,7 +26,7 @@
 - name: Remove any previous self-check instance (clean slate)
   become: true
   ansible.builtin.command:
-    cmd: "{{ rapids_procserv_prefix }}/bin/manage-procs --system remove procserv-selfcheck -f"
+    cmd: "{{ rapids_procserv_prefix }}/bin/manage-procs --system remove selfcheck -f"
   environment:
     PATH: "{{ rapids_procserv_prefix }}/bin:{{ ansible_env.PATH }}"
     PYTHONPATH: "{{ rapids_procserv_prefix }}/lib/python{{ ansible_python.version.major }}.{{ ansible_python.version.minor }}/site-packages"
@@ -41,7 +41,7 @@
       {{ rapids_procserv_prefix }}/bin/manage-procs --system add
       -C {{ rapids_procserv_iocs_dir }}/procserv-selfcheck
       -P {{ rapids_procserv_selfcheck_port }}
-      -U {{ dev_user }} -G {{ dev_user }} -A procserv-selfcheck
+      -U {{ dev_user }} -G {{ dev_user }} -A selfcheck
       {{ rapids_procserv_softioc_path.stdout }} -S -d selfcheck.db
   environment:
     PATH: "{{ rapids_procserv_prefix }}/bin:{{ ansible_env.PATH }}"
