@@ -29,6 +29,11 @@ m_stream: true
 # archiver_client_config: true  # Phoebus: Archiver data (Ctrl+D)  - needs phoebus: true
 
 # Project branding
+# AVOID '-' AND ':' IN rapids_project_name AND rapids_instance_name (below):
+# the Archiver Appliance converts both characters into directory separators
+# on disk (ConvertPVNameToKey). "ANTHEM-SPES" is stored as a literal nested
+# folder ANTHEM/SPES, not as one name - harmless, but confusing to browse.
+# Use a space, underscore, or just run the words together instead.
 # rapids_project_name: "My Project"
 # rapids_author_name: "Your Name"
 # rapids_author_email: "your.email@example.org"

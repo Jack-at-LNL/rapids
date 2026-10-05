@@ -154,13 +154,19 @@ curl -s "$AA/mgmt/bpl/getAllPVs" | grep -q "$PV_CNT" && ok "PV list contains the
 
 # ----------------------------------------------------------------- A8
 echo; echo "A8 Short-term storage"
-f1=$(sudo find "$STS" -name '*.pb' -path '*rapids*' 2>/dev/null | head -3)
+# A3 above already confirms archiving works for our specific test PVs (via
+# the retrieval API, by PV name). Here we only confirm the STS tier is
+# physically writing files at all - not by path fragment, since the
+# Archiver's ConvertPVNameToKey setting turns ':' and '-' in PV names into
+# directory separators, so the on-disk layout depends on rapids_project_name
+# and rapids_instance_name and cannot be matched by a fixed string.
+f1=$(sudo find "$STS" -name '*.pb' -newermt '-5 minutes' 2>/dev/null | head -3)
 if [ -n "$f1" ]; then
     s_a=$(sudo du -sb "$STS" | cut -f1); sleep 15; s_b=$(sudo du -sb "$STS" | cut -f1)
     ok "STS files present:"; echo "$f1" | sed 's/^/         /'
     [ "$s_b" -gt "$s_a" ] && ok "STS growing ($s_a -> $s_b bytes in 15 s)" || warn "STS size unchanged in 15 s ($s_a bytes; data may still be buffered)"
     info "owner and mode: $(sudo stat -c '%U:%G %a' "$STS")"
-else bad "no STS files for the test PVs under $STS"; fi
+else bad "no recently-written .pb files found under $STS"; fi
 
 # ----------------------------------------------------------------- A5a
 echo; echo "A5a Persistence across an archiver restart"
