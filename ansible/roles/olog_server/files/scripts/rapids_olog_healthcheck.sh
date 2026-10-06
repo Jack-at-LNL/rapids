@@ -188,6 +188,11 @@ echo; echo "O8 Management scripts"
 if sudo test -d "$SCRIPTS"; then
     sudo ls -l "$SCRIPTS" | sed 's/^/         /'
     for f in $(sudo ls "$SCRIPTS"); do
+        # Skip this healthcheck script itself: its own O3 test section
+        # legitimately contains the literal demo-password string as the
+        # value it tests against (code_login admin adminPass), not a
+        # leaked credential - scanning it here is a false positive.
+        [ "$f" = "rapids_olog_healthcheck.sh" ] && { info "$f: skipped (this is the healthcheck script itself)"; continue; }
         p="$SCRIPTS/$f"
         sudo grep -q "adminPass" "$p" && bad "$f contains the demo password" || ok "$f: no demo password"   # audit: allow
         m=$(sudo stat -c '%a' "$p"); [ "${m: -1}" -ge 4 ] 2>/dev/null && sudo grep -qi "password" "$p" \

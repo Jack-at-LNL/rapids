@@ -94,7 +94,7 @@ record(calc, "${PVPREFIX}:sine") {
 DBEOF
 fi
 
-SOFTIOC=$(command -v softIocPVX)
+SOFTIOC=$(bash -l -c 'command -v softIocPVX' 2>/dev/null)
 if [ -z "$WORKDIR" ]; then
     : # already reported above
 elif [ -z "$SOFTIOC" ]; then
