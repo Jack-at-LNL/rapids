@@ -19,4 +19,13 @@ rapids_procserv_prefix: "/usr/local"
 rapids_procserv_selfcheck: true
 rapids_procserv_selfcheck_port: 4051
 
-rapids_procserv_iocs_dir: "/opt/epics-tools/iocs"
+# Where an operator's own production IOCs would conventionally live -
+# a sibling of /opt/epics/base-<version> and the EPICS modules, not inside
+# /opt/epics-tools/ (which is for RAPIDS's own bundled service tooling:
+# Olog, Archiver Appliance, Phoebus config, procServ itself). This matches
+# the EPICS community's own layout convention (e.g. EIC's /epics/iocs,
+# SNS/ANL's iocTop sitting alongside base and modules) rather than nesting
+# IOCs inside a deployment tool's own directory. RAPIDS creates this
+# directory but never writes inside it beyond the healthcheck's own
+# self-check subfolder - see doc/rapids/procserv-manual.md.
+rapids_procserv_iocs_dir: "/opt/epics/iocs"
