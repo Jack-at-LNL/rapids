@@ -1,0 +1,55 @@
+---
+- name: Ensure the procServ healthcheck scripts directory exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ rapids_procserv_healthcheck_dir | default('/opt/epics-tools/procserv/scripts') }}"
+    state: directory
+    owner: "{{ dev_user }}"
+    group: "{{ dev_user }}"
+    mode: "0755"
+
+- name: Install the RAPIDS procServ healthcheck script
+  become: true
+  ansible.builtin.copy:
+    src: rapids_procserv_healthcheck.sh
+    dest: "{{ rapids_procserv_healthcheck_dir | default('/opt/epics-tools/procserv/scripts') }}/rapids_procserv_healthcheck.sh"
+    owner: "{{ dev_user }}"
+    group: "{{ dev_user }}"
+    mode: "0755"
+
+# Scoped the same way as the Archiver and Olog healthchecks: the self-check
+# PVs use rapids_project_name/rapids_instance_name so two RAPIDS instances
+# on the same network never collide. PROCSERV_SELFCHECK_PORT defaults to
+# rapids_procserv_selfcheck_port, same value the old inline logic used.
+- name: Run the procServ healthcheck
+  ansible.builtin.command:
+    cmd: "bash {{ rapids_procserv_healthcheck_dir | default('/opt/epics-tools/procserv/scripts') }}/rapids_procserv_healthcheck.sh"
+  environment:
+    RAPIDS_PROJECT_NAME: "{{ rapids_project_name }}"
+    RAPIDS_INSTANCE_NAME: "{{ rapids_instance_name | default('vm') }}"
+    PROCSERV_PREFIX: "{{ rapids_procserv_prefix }}"
+    PROCSERV_SELFCHECK_PORT: "{{ rapids_procserv_selfcheck_port }}"
+    PROCSERV_IOCS_DIR: "{{ rapids_procserv_iocs_dir }}"
+    PROCSERV_SELFCHECK_DIR: "{{ rapids_procserv_healthcheck_dir | default('/opt/epics-tools/procserv/scripts') | dirname }}/selfcheck"
+  become: true
+  become_user: "{{ dev_user }}"
+  register: rapids_procserv_healthcheck_result
+  changed_when: false
+  failed_when: false
+
+- name: Determine whether the procServ healthcheck failed
+  ansible.builtin.set_fact:
+    rapids_procserv_selfcheck_failed: "{{ 'FAIL=0' not in (rapids_procserv_healthcheck_result.stdout | default('')) }}"
+
+- name: WARNING - procServ healthcheck reported failures
+  when: rapids_procserv_selfcheck_failed | bool
+  ansible.builtin.debug:
+    msg:
+      - "procServ HEALTHCHECK reported failures - see the report above/below for details."
+      - "The install is CONTINUING. See doc/rapids/procserv-manual.md, section Troubleshooting."
+      - "{{ rapids_procserv_healthcheck_result.stdout_lines[-10:] }}"
+
+- name: Report the procServ healthcheck result
+  when: not (rapids_procserv_selfcheck_failed | bool)
+  ansible.builtin.debug:
+    msg: "{{ rapids_procserv_healthcheck_result.stdout_lines[-6:] }}"

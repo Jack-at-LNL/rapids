@@ -151,8 +151,8 @@
 
 - name: Install the RAPIDS Archiver healthcheck script
   become: true
-  ansible.builtin.copy:
-    src: scripts/rapids_archiver_healthcheck.sh
+  ansible.builtin.template:
+    src: rapids_archiver_healthcheck.sh.j2
     dest: "{{ archiver_appliance_healthcheck_dir | default('/opt/epics-tools/archiver/scripts') }}/rapids_archiver_healthcheck.sh"
     owner: "{{ dev_user }}"
     group: "{{ dev_user }}"

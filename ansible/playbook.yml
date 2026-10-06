@@ -215,6 +215,14 @@
       when: rapids_environment | default(true) | bool
       tags: rapids_environment
 
+    - name: RAPIDS procServ
+      include_role:
+        name: rapids_procserv
+        apply:
+          tags: rapids_procserv
+      when: rapids_procserv | default(false) | bool
+      tags: rapids_procserv
+
     - name: Run the RAPIDS Archiver healthcheck (see tasks/run_archiver_healthcheck.yml)
       ansible.builtin.import_tasks: tasks/run_archiver_healthcheck.yml
   # Defined at the play level (not inside a role's handlers/main.yml) so it's

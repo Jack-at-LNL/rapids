@@ -1,0 +1,216 @@
+---
+# === Install procServ from source ===
+# EPEL's binary package does NOT include procServUtils/manage-procs (confirmed
+# 2026-10-02) - the systemd integration only exists when built with
+# --with-systemd-utils. There is no package that ships this; building from
+# source is the only path.
+
+- name: Install build dependencies for procServ
+  become: true
+  ansible.builtin.dnf:
+    name:
+      - gcc-c++
+      - make
+      - automake
+      - autoconf
+      - libtool
+      - systemd-devel
+    state: present
+
+- name: Check whether procServ is currently installed at the RAPIDS prefix
+  ansible.builtin.stat:
+    path: "{{ rapids_procserv_prefix }}/bin/procServ"
+  register: rapids_procserv_binary
+
+- name: Check whether manage-procs is currently installed at the RAPIDS prefix
+  ansible.builtin.stat:
+    path: "{{ rapids_procserv_prefix }}/bin/manage-procs"
+  register: rapids_procserv_manage_procs
+
+- name: Determine the currently-installed procServ version, if any
+  when: rapids_procserv_binary.stat.exists
+  ansible.builtin.command:
+    cmd: "{{ rapids_procserv_prefix }}/bin/procServ --version"
+  register: rapids_procserv_current_version
+  changed_when: false
+
+- name: Decide whether a (re)build is needed
+  ansible.builtin.set_fact:
+    rapids_procserv_needs_build: >-
+      {{ not rapids_procserv_binary.stat.exists
+         or not rapids_procserv_manage_procs.stat.exists
+         or rapids_procserv_version not in rapids_procserv_current_version.stdout | default('') }}
+
+- name: Report procServ build decision
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'procServ ' + rapids_procserv_version + ' already installed with manage-procs - skipping build.'
+         if not rapids_procserv_needs_build
+         else 'procServ/manage-procs missing or outdated at ' + rapids_procserv_prefix + ' - building ' + rapids_procserv_version + '.' }}
+
+# Detect a conflicting binary-only package install (EPEL, apt, etc.) that
+# would create PATH ambiguity for an operator typing `procServ` manually.
+# This never changes what this role itself does - every task here calls the
+# full {{ rapids_procserv_prefix }} path explicitly - it only warns, since
+# removing a package the operator may have installed deliberately is not
+# this role's decision to make.
+- name: Check for a competing package-manager procServ install
+  ansible.builtin.command:
+    cmd: rpm -q procServ
+  register: rapids_procserv_rpm_check
+  changed_when: false
+  failed_when: false
+
+- name: WARNING - a package-manager procServ is also installed
+  when: rapids_procserv_rpm_check.rc == 0
+  ansible.builtin.debug:
+    msg:
+      - "A package-manager procServ ({{ rapids_procserv_rpm_check.stdout }}) is also installed on this system,"
+      - "typically at /usr/bin/procServ. It does NOT include manage-procs (EPEL's build omits"
+      - "procServUtils). RAPIDS always uses the full path to its own build at"
+      - "{{ rapids_procserv_prefix }}/bin/, so this does not affect anything this role does - but if"
+      - "you run a bare 'procServ' command interactively, run 'which procServ' first to see which"
+      - "one your shell's PATH resolves."
+
+- name: Rebuild procServ safely
+  when: rapids_procserv_needs_build
+  block:
+    - name: Remove the previous procServ installation's files
+      become: true
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ rapids_procserv_prefix }}/bin/procServ"
+        - "{{ rapids_procserv_prefix }}/bin/manage-procs"
+        - "{{ rapids_procserv_prefix }}/bin/procServ-launcher"
+        - "{{ rapids_procserv_prefix }}/lib/python{{ ansible_python.version.major }}.{{ ansible_python.version.minor }}/site-packages/procServUtils"
+        - "{{ rapids_procserv_prefix }}/lib/python{{ ansible_python.version.major }}.{{ ansible_python.version.minor }}/site-packages/procServUtils-0.0.0-py{{ ansible_python.version.major }}.{{ ansible_python.version.minor }}.egg-info"
+        - "{{ rapids_procserv_prefix }}/lib/systemd/system-generators/systemd-procserv-generator-system"
+        - "{{ rapids_procserv_prefix }}/lib/systemd/user-generators/systemd-procserv-generator-user"
+        - "{{ rapids_procserv_prefix }}/share/doc/procServ"
+        - "{{ rapids_procserv_prefix }}/share/man/man1/procServ.1"
+        - "{{ rapids_procserv_prefix }}/share/man/man1/manage-procs.1"
+
+    - name: Create temporary build directory
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: procserv-build
+      register: rapids_procserv_tmpdir
+
+    - name: Download procServ source
+      ansible.builtin.get_url:
+        url: "{{ rapids_procserv_url }}"
+        dest: "{{ rapids_procserv_tmpdir.path }}/procServ.tar.gz"
+        mode: "0644"
+
+    - name: Extract procServ source
+      ansible.builtin.unarchive:
+        src: "{{ rapids_procserv_tmpdir.path }}/procServ.tar.gz"
+        dest: "{{ rapids_procserv_tmpdir.path }}"
+        remote_src: true
+
+    - name: Fix Python 3 syntax error in setup.py (0755 -> 0o755)
+      ansible.builtin.replace:
+        path: "{{ rapids_procserv_tmpdir.path }}/procServ-{{ rapids_procserv_version }}/setup.py"
+        regexp: 'os\.chmod\(file, 0755\)'
+        replace: 'os.chmod(file, 0o755)'
+
+    - name: Configure procServ (with systemd utils, default /usr/local prefix)
+      ansible.builtin.command:
+        cmd: ./configure --with-systemd-utils
+        chdir: "{{ rapids_procserv_tmpdir.path }}/procServ-{{ rapids_procserv_version }}"
+
+    - name: Build procServ
+      ansible.builtin.command:
+        cmd: make
+        chdir: "{{ rapids_procserv_tmpdir.path }}/procServ-{{ rapids_procserv_version }}"
+
+    - name: Install procServ
+      become: true
+      ansible.builtin.command:
+        cmd: make install
+        chdir: "{{ rapids_procserv_tmpdir.path }}/procServ-{{ rapids_procserv_version }}"
+
+    - name: Remove temporary build directory
+      ansible.builtin.file:
+        path: "{{ rapids_procserv_tmpdir.path }}"
+        state: absent
+
+    - name: Verify the newly-built binary reports the expected version
+      ansible.builtin.command:
+        cmd: "{{ rapids_procserv_prefix }}/bin/procServ --version"
+      register: rapids_procserv_verify_version
+      changed_when: false
+
+    - name: Stop if the build did not produce the expected version
+      ansible.builtin.assert:
+        that: rapids_procserv_version in rapids_procserv_verify_version.stdout
+        fail_msg: >-
+          Built procServ reports '{{ rapids_procserv_verify_version.stdout }}',
+          expected it to contain '{{ rapids_procserv_version }}'. Stopping
+          rather than proceeding with an unverified installation.
+
+    - name: Verify manage-procs is installed and can locate procServ-launcher
+      ansible.builtin.command:
+        cmd: >-
+          python3 -c
+          "from procServUtils.generator import which; print(which('procServ-launcher'))"
+      environment:
+        PATH: "{{ rapids_procserv_prefix }}/bin:{{ ansible_env.PATH }}"
+        PYTHONPATH: "{{ rapids_procserv_prefix }}/lib/python{{ ansible_python.version.major }}.{{ ansible_python.version.minor }}/site-packages"
+      register: rapids_procserv_verify_launcher
+      changed_when: false
+      failed_when: "'None' in rapids_procserv_verify_launcher.stdout or rapids_procserv_verify_launcher.rc != 0"
+
+- name: Find the installed procServ generator's actual path
+  ansible.builtin.stat:
+    path: "{{ rapids_procserv_prefix }}/lib/systemd/system-generators/systemd-procserv-generator-system"
+  register: rapids_procserv_generator_src
+
+- name: Fail clearly if the generator was not installed where expected
+  ansible.builtin.assert:
+    that: rapids_procserv_generator_src.stat.exists
+    fail_msg: >-
+      systemd-procserv-generator-system not found under
+      {{ rapids_procserv_prefix }}/lib/systemd/system-generators/.
+      The procServ build layout may have changed - check it before proceeding.
+
+- name: Symlink the procServ systemd generator into the real generator directory
+  become: true
+  ansible.builtin.file:
+    src: "{{ rapids_procserv_prefix }}/lib/systemd/system-generators/systemd-procserv-generator-system"
+    dest: /usr/lib/systemd/system-generators/systemd-procserv-generator-system
+    state: link
+    force: true
+  notify: Reload systemd for procServ
+
+- name: Ensure the procServ instance config directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/procServ.d
+    state: directory
+    mode: "0755"
+
+- name: Ensure the IOCs parent directory exists (for operators' own IOCs)
+  become: true
+  ansible.builtin.file:
+    path: "{{ rapids_procserv_iocs_dir }}"
+    state: directory
+    owner: "{{ dev_user }}"
+    group: "{{ dev_user }}"
+    mode: "0755"
+
+- name: Flush handlers now so the generator is active before the self-check
+  ansible.builtin.meta: flush_handlers
+
+- name: Run the procServ self-check
+  ansible.builtin.include_tasks: selfcheck.yml
+  when: rapids_procserv_selfcheck | bool
+
+- name: Final warning if the self-check failed, so it is not missed in a long install log
+  when: (rapids_procserv_selfcheck_failed | default(false)) | bool
+  ansible.builtin.debug:
+    msg:
+      - "REMINDER: the procServ self-check reported a failure earlier in this install."
+      - "procServ/manage-procs may not be reliable on this VM - review the warning above before depending on it."
