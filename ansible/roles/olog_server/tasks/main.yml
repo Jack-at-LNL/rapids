@@ -140,11 +140,15 @@
     - seed
   when: olog_seed_initial_data | default(true) | bool
 
-- name: Setup backup system
+# No backup/restore mechanism is provided by RAPIDS for Olog - see the
+# note in defaults/main.yml and doc/rapids/olog-server.md, section 6. This
+# task installs the management scripts (manage-logbooks.sh, manage-tags.sh)
+# and the healthcheck script, which always applies - there is no setting
+# to gate it on.
+- name: Install management scripts and healthcheck
   include_tasks: setup_backup.yml
   tags:
-    - backup
-  when: olog_enable_backup | default(true) | bool
+    - scripts
 
 - name: Display installation complete
   debug:

@@ -15,7 +15,7 @@ Ansible role for deploying Olog electronic logbook server in the RAPIDS (Rapid A
 - **Complete Cleanup**: Removes previous installations before deploying fresh configuration
 - **Source Build**: Builds Olog 5.x from source using Maven (no pre-built binaries available)
 - **Initial Data Seeding**: Creates logbooks and tags from `local.yml` via REST API
-- **Automated Backups**: Daily backup with configurable retention
+- **No Built-in Backup**: by design - see the Backup Configuration note below
 - **RAPIDS Compliant**: Follows RAPIDS standard paths (`/opt/epics-tools`)
 
 ## Requirements
@@ -75,11 +75,13 @@ olog_initial_tags:
 ```
 
 ### Backup Configuration
-```yaml
-olog_enable_backup: true
-olog_backup_dir: "/backup/olog"
-olog_backup_retention_days: 30
-```
+
+RAPIDS does not provide a backup/restore mechanism for Olog. An earlier
+implementation only dumped MongoDB, which holds neither log entry content
+nor the logbook/tag list - both live in ElasticSearch - so it protected
+almost nothing and was removed outright. See `doc/rapids/olog-server.md`,
+section 6, for the reasoning, and run your own ElasticSearch snapshot +
+`mongodump` if you need backups.
 
 ## Usage
 

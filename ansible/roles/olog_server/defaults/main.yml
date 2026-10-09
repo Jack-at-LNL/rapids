@@ -71,14 +71,12 @@ olog_mongodb_version: "4.4"
 olog_cleanup_packages: true
 olog_cleanup_user: false
 
-# Backup configuration
-olog_enable_backup: true
-olog_backup_dir: "/backup/olog"
-olog_backup_retention_days: 30
-# Daily backup time (cron fields): 02:00 every day
-olog_backup_cron_minute: "0"
-olog_backup_cron_hour: "2"
-olog_backup_cron_day: "*"
+# No backup/restore mechanism is provided by RAPIDS for Olog. An earlier
+# implementation only dumped MongoDB, which holds neither log entry
+# content nor the logbook/tag list - both live in ElasticSearch - so it
+# protected almost nothing and was removed outright. This is intentional
+# and documented, not a gap: see doc/rapids/olog-server.md, section 6.
+# Run your own ElasticSearch snapshot + mongodump if you need backups.
 
 # Initial data seeding
 olog_seed_initial_data: true
