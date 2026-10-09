@@ -49,12 +49,17 @@ archiver_appliance_cluster_inetport: "localhost:16670"
 # Where the healthcheck script (rapids_archiver_healthcheck.sh) is installed.
 archiver_appliance_healthcheck_dir: "/opt/epics-tools/archiver/scripts"
 
-# Adds a Tomcat JNDI JDBC connection pool resource (jdbc/archappl) to
-# context.xml. Off by default - the Archiver Appliance connects to MariaDB
-# through archappl.properties already (see that template), not through
-# this Tomcat-level pool; this exists for sites that want Tomcat itself to
-# manage the pool instead. This variable was referenced in context.xml.j2
-# with no default and no declaration here until this was found during a
-# documentation review - previously undefined (and, separately, the
-# template was never actually rendered at all - see install_tomcat.yml).
-mysql_connection_pool: false
+# Adds the Tomcat JNDI JDBC connection pool resource (jdbc/archappl) to
+# context.xml. REQUIRED, not optional, despite the name suggesting a choice:
+# confirmed by a real startup failure on a from-zero install (the first time
+# context.xml was genuinely rendered, since an older, broken files/context.xml
+# + copy combination always left the <Resource> block present regardless of
+# this flag) - the Archiver Appliance's MySQLPersistence layer does a
+# mandatory JNDI lookup for jdbc/archappl at startup; without this block,
+# that lookup finds an empty stub and throws "Cannot create JDBC driver of
+# class '' for connect URL 'null'", and the appliance never leaves its
+# startup retry loop. archappl.properties does not substitute for this -
+# it configures separate, non-persistence-layer settings. This variable had
+# no default and no declaration anywhere until this was found during a
+# documentation review.
+mysql_connection_pool: true
