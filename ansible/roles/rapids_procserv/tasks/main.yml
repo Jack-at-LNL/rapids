@@ -1,7 +1,7 @@
 ---
 # === Install procServ from source ===
-# EPEL's binary package does NOT include procServUtils/manage-procs (confirmed
-# 2026-10-02) - the systemd integration only exists when built with
+# EPEL's binary package does NOT include procServUtils/manage-procs, confirmed
+# by testing - the systemd integration only exists when built with
 # --with-systemd-utils. There is no package that ships this; building from
 # source is the only path.
 

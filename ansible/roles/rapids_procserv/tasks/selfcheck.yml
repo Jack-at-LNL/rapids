@@ -29,7 +29,6 @@
     RAPIDS_INSTANCE_NAME: "{{ rapids_instance_name | default('vm') }}"
     PROCSERV_PREFIX: "{{ rapids_procserv_prefix }}"
     PROCSERV_SELFCHECK_PORT: "{{ rapids_procserv_selfcheck_port }}"
-    PROCSERV_IOCS_DIR: "{{ rapids_procserv_iocs_dir }}"
     PROCSERV_SELFCHECK_DIR: "{{ rapids_procserv_healthcheck_dir | default('/opt/epics-tools/procserv/scripts') | dirname }}/selfcheck"
   become: true
   become_user: "{{ dev_user }}"
