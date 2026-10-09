@@ -26,6 +26,14 @@ rapids_procserv_selfcheck_port: 4051
 # the EPICS community's own layout convention (e.g. EIC's /epics/iocs,
 # SNS/ANL's iocTop sitting alongside base and modules) rather than nesting
 # IOCs inside a deployment tool's own directory. RAPIDS creates this
-# directory but never writes inside it beyond the healthcheck's own
-# self-check subfolder - see doc/rapids/procserv-manual.md.
+# directory and never writes inside it at all - the healthcheck's own
+# self-check artifact deliberately lives elsewhere (see
+# rapids_procserv_healthcheck_dir below) so nothing of RAPIDS's own ever
+# appears here - see doc/rapids/procserv-manual.md.
 rapids_procserv_iocs_dir: "/opt/epics/iocs"
+
+# Where the healthcheck script is installed, and where its self-check's
+# own transient working directory lives (as a "selfcheck" sibling folder) -
+# matching the /opt/epics-tools/<service>/scripts/ convention already used
+# by the Olog and Archiver Appliance roles.
+rapids_procserv_healthcheck_dir: "/opt/epics-tools/procserv/scripts"
