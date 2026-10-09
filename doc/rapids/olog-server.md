@@ -53,6 +53,29 @@ Accounts with `admin: true` (plus `olog_admin_user` always) get full management 
   ```
 - **Before deployment**: extract just the `$ANSIBLE_VAULT;1.1;AES256` block from `local.yml` into a file, then `ansible-vault decrypt tempfile --output=-`.
 
+### Adding or changing accounts without reinstalling
+
+Unlike logbooks and tags (section 3), there is no lightweight standalone
+script for accounts - the embedded-LDAP user file is rendered and the
+service restarted only as part of the full Olog install task
+(`install_olog.yml`, tag `olog`). To add a user or change a password:
+
+1. Edit `olog_users` in `local.yml` (add/change an entry), or update
+   `olog_admin_password` - encrypted with `ansible-vault encrypt_string`,
+   same as the initial setup above.
+2. Re-run:
+```bash
+   ./vm-setup/update.sh --ask-vault-pass --tags olog_server
+```
+
+This re-runs the whole Olog role, including a full rebuild from source
+(5-10 minutes) and a cleanup pass that removes and recreates
+`olog_install_dir`/`olog_data_dir`/`olog_log_dir` first - this is safe:
+log entries, logbooks, tags, and attachments all live in MongoDB and
+ElasticSearch, neither of which this cleanup touches, so nothing you
+have already logged is at risk. The rebuild itself is simply the cost of
+there being no finer-grained path today.
+
 ## 3. Logbooks and Tags
 
 Declared in `local.yml`, not the role's own defaults (which are empty):
