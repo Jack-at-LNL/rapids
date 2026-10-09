@@ -129,6 +129,15 @@
     delay: 5
     timeout: 60
 
+# KNOWN GAP (tracked, not yet fixed): the 'mongo' shell binary was removed
+# in MongoDB 6.0+, replaced by 'mongosh'. On the AVX-capable path above
+# (mongodb_version: 7.0), this command does not exist, so this check
+# silently verifies nothing - failed_when: false absorbs the failure and
+# the debug message below always prints "running successfully" regardless.
+# Every install tested so far has landed on the no-avx/4.4 path, where
+# 'mongo' still exists and this check genuinely works - the 7.0 path has
+# not been exercised. Needs a mongosh/mongo conditional, verified on a
+# real AVX-capable machine, before this can be trusted on that path.
 - name: Verify MongoDB is running
   command: mongo --eval "db.version()"
   register: mongodb_version_check
