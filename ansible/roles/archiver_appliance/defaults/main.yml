@@ -45,3 +45,6 @@ archiver_appliance_http_port: 17665
 archiver_appliance_base_url: "http://{{ archiver_appliance_host }}:{{ archiver_appliance_http_port }}"
 # Cluster address: a single appliance talks only to itself
 archiver_appliance_cluster_inetport: "localhost:16670"
+
+# Where the healthcheck script (rapids_archiver_healthcheck.sh) is installed.
+archiver_appliance_healthcheck_dir: "/opt/epics-tools/archiver/scripts"
