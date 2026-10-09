@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
-# rapids_olog_tests.sh
-# RAPIDS - tests of the Olog server on an installed machine (test plan 25 Sep 2026)
+# rapids_olog_healthcheck.sh
+# RAPIDS - tests of the Olog server on an installed machine
 #
 #   O1  services and listening addresses (8080 Olog, 9200/9300 ElasticSearch,
 #       27017 MongoDB, 8389 embedded LDAP)
@@ -10,13 +10,17 @@
 #   O4  contents: logbook, tag, entry, attachment (upload + download check),
 #       search by title / text / logbook / tag / time range, edit
 #   O6a persistence across an Olog service restart
-#   O7  backup: cron job present, backup script runs, archive produced
+#   O7  confirms no backup cron job or script is present - RAPIDS ships none
+#       by design (see doc/rapids/olog-server.md, section 6); this fails
+#       only if an undocumented backup mechanism is unexpectedly found
 #   O8  management scripts: present, permissions, no demo password inside
 #
-# Usage (as epics-dev on the test machine):
-#   bash ~/rapids_olog_tests.sh                 # all tests (asks the Olog password)
-#   bash ~/rapids_olog_tests.sh --no-restart    # skip O6a (no service restart)
-#   bash ~/rapids_olog_tests.sh --no-backup     # skip running the backup (O7)
+# Usage (installed by RAPIDS at
+# /opt/epics-tools/olog/scripts/rapids_olog_healthcheck.sh, but safe to run
+# from any location):
+#   bash rapids_olog_healthcheck.sh                 # asks the Olog password
+#   OLOG_PASSWORD=... bash rapids_olog_healthcheck.sh   # non-interactive
+#   bash rapids_olog_healthcheck.sh --no-restart    # skip O6a (no service restart)
 # Report: ~/olog-tests-<date>.txt ; created ids: ~/olog-test-ids.txt
 #
 # Test data are created in logbook and tag 'rapids-test' and are kept on
@@ -31,9 +35,9 @@ SCRIPTS=/opt/epics-tools/olog/scripts
 REPORT=~/olog-tests-$(date +%Y%m%d-%H%M).txt
 IDS=~/olog-test-ids.txt
 RUN=$(date +%Y%m%d%H%M%S)
-DO_RESTART=yes; DO_BACKUP=yes
+DO_RESTART=yes
 for a in "$@"; do
-    case "$a" in --no-restart) DO_RESTART=no;; --no-backup) DO_BACKUP=no;; esac
+    case "$a" in --no-restart) DO_RESTART=no;; esac
 done
 PASS=0; FAIL=0; WARN=0
 exec > >(tee "$REPORT") 2>&1
@@ -62,7 +66,7 @@ PY
          --data @"$TMP/login.json" "$URL/login"
 }
 
-echo "RAPIDS Olog tests - $(date) - run $RUN - $URL"
+echo "RAPIDS Olog healthcheck - $(date) - run $RUN - $URL"
 
 # ----------------------------------------------------------------- O1
 echo; echo "O1 Services and listening addresses"
