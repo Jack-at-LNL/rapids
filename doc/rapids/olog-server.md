@@ -120,7 +120,23 @@ curl -X PUT http://localhost:8080/Olog/logs \
 
 ## 5. Health Check and Troubleshooting
 
-Work through these in order — each narrows down where a problem actually is.
+### 5.0 Automatic healthcheck — start here
+
+A verification script (`rapids_olog_healthcheck.sh`) runs **automatically, once, at the end of installation** - services, authentication (including that Olog's built-in demo accounts are correctly refused), logbook/tag/entry/attachment round-trips through the real REST API, an optional restart-persistence check, and confirmation that no backup mechanism is unexpectedly present (Section 6). Its result appears directly in the install output:
+
+```
+SUMMARY: PASS=26 FAIL=0 WARN=1   report: /home/epics-dev/olog-tests-<date>.txt   ids: /home/epics-dev/olog-test-ids.txt
+```
+
+It stays installed afterward for manual re-runs:
+
+```bash
+OLOG_PASSWORD='YourPassword' bash /opt/epics-tools/olog/scripts/rapids_olog_healthcheck.sh
+OLOG_PASSWORD='YourPassword' bash /opt/epics-tools/olog/scripts/rapids_olog_healthcheck.sh --no-restart   # skip the restart test
+bash /opt/epics-tools/olog/scripts/rapids_olog_healthcheck.sh   # omit OLOG_PASSWORD to be prompted interactively instead
+```
+
+If it reports a failure, the sections below (5.1 onward) are how to dig into *why* - work through them in order, each narrows down where a problem actually is.
 
 ### 5.1 Are the underlying services even running?
 
@@ -269,10 +285,10 @@ For anyone who needs to modify how this is installed, not just operate it day-to
 4. `install_olog.yml` — clones and builds `phoebus-olog` with Maven, renders `rapids-users.ldif.j2` and `application.properties`
 5. Login/auth verification against the running service
 6. `seed_initial_data.yml` — creates `olog_initial_logbooks`/`olog_initial_tags` via the REST API
-7. `setup_backup.yml` — installs `manage-logbooks.sh`/`manage-tags.sh` only (backup removed, Section 6)
+7. `setup_backup.yml` — installs `manage-logbooks.sh`/`manage-tags.sh` (backup removed, Section 6) and `rapids_olog_healthcheck.sh`, then runs it non-interactively (`OLOG_PASSWORD` via environment - Section 5.0)
 
 **Key variables** (`defaults/main.yml`, overridden in `local.yml`): `olog_admin_user`, `olog_admin_password`, `olog_users`, `olog_initial_logbooks`, `olog_initial_tags`, `olog_install_dir`, `olog_port`.
 
-**Templates:** `templates/rapids-users.ldif.j2` (accounts/groups), `templates/scripts/manage-*.sh.j2`.
+**Templates:** `templates/rapids-users.ldif.j2` (accounts/groups), `templates/scripts/manage-*.sh.j2`. `files/scripts/rapids_olog_healthcheck.sh` is a plain copy, not templated - it reads its scope (project/instance context, password) entirely from the environment at runtime, same pattern as the Archiver and procServ healthcheck scripts.
 
 **Companion role:** `phoebus_client_config` writes the Phoebus-side block into `/opt/epics-tools/config/preferences.ini` (Section 7); its file path is set by `phoebus_settings_file` in its own defaults, matching what `/usr/local/bin/run-phoebus` (installed by the `phoebus` role) actually launches with.
