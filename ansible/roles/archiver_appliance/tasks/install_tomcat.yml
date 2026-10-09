@@ -53,15 +53,25 @@
     group: "{{ tomcat_group }}"
     mode: "0770"
 
-- name: Configure tomcat - server.xml, context.xml
+- name: Configure tomcat - server.xml (static)
   become: true
   ansible.builtin.copy:
-    src: "{{ item }}"
-    dest: "{{ tomcat_home }}/conf/{{ item }}"
+    src: server.xml
+    dest: "{{ tomcat_home }}/conf/server.xml"
     mode: "0644"
-  loop:
-    - context.xml
-    - server.xml
+  notify:
+    - Restart archiver-appliance
+
+# context.xml needs real Jinja2 rendering (ansible_managed, and the
+# mysql_connection_pool conditional JDBC Resource block) - confirmed by
+# direct inspection of a deployed system that the old files/context.xml +
+# copy combination left both unrendered verbatim in the live config.
+- name: Configure tomcat - context.xml (templated)
+  become: true
+  ansible.builtin.template:
+    src: context.xml.j2
+    dest: "{{ tomcat_home }}/conf/context.xml"
+    mode: "0644"
   notify:
     - Restart archiver-appliance
 
