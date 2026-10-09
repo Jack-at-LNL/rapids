@@ -60,7 +60,7 @@ bash -l /opt/epics-tools/archiver/scripts/rapids_archiver_healthcheck.sh --no-re
 bash -l /opt/epics-tools/archiver/scripts/rapids_archiver_healthcheck.sh --stop-ioc     # stop the test IOC it starts
 ```
 
-It checks, in order: service/port status, the management page, end-to-end archiving of two test PVs (`rapids:test:counter` over PV Access, `rapids:test:noise` over Channel Access), short-term storage growth, and exposure/credential warnings — a complete report is written to `~/archiver-tests-<timestamp>.txt`.
+It checks, in order: service/port status, the management page, end-to-end archiving of two test PVs (`{{ rapids_project_name }}:{{ rapids_instance_name }}:healthcheck:counter` over PV Access, `...:healthcheck:noise` over Channel Access — see `local.yml.sample` for `rapids_instance_name`, which keeps two RAPIDS installs on the same network from colliding on these names), short-term storage growth, and exposure/credential warnings — a complete report is written to `~/archiver-tests-<timestamp>.txt`.
 
 ## 5. CLI Reference
 
@@ -95,7 +95,7 @@ sudo du -sh /var/lib/archiver-appliance/{sts,mts,lts}
 
 These are deliberate trade-offs for the training/development use case, not oversights — flagged clearly by the health check's own `WARN` lines on every run:
 
-- **MariaDB uses the default `archappl`/`archappl` credentials.** This is a stated, intentional default for this deployment — change it in `tasks/install_mariadb.yml` if your site requires it.
+- **MariaDB uses the default `archappl`/`archappl` credentials.** This is a stated, intentional default for this deployment. If your site requires changing it, the password is hardcoded in **four** places that must all be updated together, or the Archiver Appliance will fail to start (confirmed directly: a mismatch here reproduces the exact "Cannot create JDBC driver" / stuck-startup failure documented in the Appendix's `context.xml` note) - `tasks/install_mariadb.yml` (the MariaDB user itself), `tasks/main.yml` (the schema-install command and the `PVTypeInfo` nullability fix, two occurrences), and `templates/context.xml.j2` (the JDBC `Resource` Tomcat uses to connect). There is no single variable for this yet - each location is a literal string today.
 - **The management interface (`:17665`) accepts requests with no authentication.** Limit network access to your control network; do not expose this port beyond it.
 
 ## 7. Phoebus Client Integration
@@ -116,12 +116,14 @@ Launch Phoebus with `/usr/local/bin/run-phoebus` to pick this up.
 
 **Role location:** `ansible/roles/archiver_appliance/`, tagged `[archiver_appliance]`, gated by `archiver_appliance: true` in `local.yml`.
 
-**Task flow** (`tasks/main.yml`, in order): MariaDB install → Tomcat install → Archiver Appliance download/unpack → storage directory creation (per-tier) → `appliances.xml` → `policies.py` (templated) → `archappl.properties` → `setenv.sh` (exports `ARCHAPPL_*_FOLDER` from the per-tier variables) → database table setup → systemd service → homepage link → healthcheck script installation.
+**Task flow** (`tasks/main.yml`, in order): MariaDB install → Tomcat install (`server.xml` static copy, `context.xml` **templated** — see note below) → Archiver Appliance download/unpack → storage directory creation (per-tier) → `appliances.xml` → `policies.py` (templated) → `archappl.properties` → `setenv.sh` (exports `ARCHAPPL_*_FOLDER` from the per-tier variables) → database table setup → systemd service → homepage link → healthcheck script installation.
 
 **Key variables** (`defaults/main.yml`): `archiver_appliance_storage`, `archiver_appliance_storage_sts/mts/lts`, `archiver_appliance_mts_hold_days`, `archiver_appliance_lts_partition_granularity`, `archiver_appliance_healthcheck_dir`.
 
-**Templates:** `templates/rapids-policies.py.j2` (retention policy, single source of truth — see Section 3), `templates/setenv.sh.j2`, `templates/appliances.xml.j2`, `templates/archappl.properties.j2`, `files/scripts/rapids_archiver_healthcheck.sh` (plain copy, not templated — derives its own storage path at runtime from the rendered `setenv.sh` rather than needing a second variable substitution).
+**Templates:** `templates/rapids-policies.py.j2` (retention policy, single source of truth — see Section 3), `templates/setenv.sh.j2`, `templates/appliances.xml.j2`, `templates/archappl.properties.j2`, `templates/context.xml.j2` (Tomcat's own `conf/context.xml` — see note below), `templates/rapids_archiver_healthcheck.sh.j2` (rendered with `rapids_project_name`/`rapids_instance_name` for the PV names used in Section 4's end-to-end test).
+
+**`context.xml` — mandatory JDBC resource, a confirmed, hard-won fix.** `context.xml.j2` defines a Tomcat JNDI `jdbc/archappl` DataSource that the Archiver Appliance's persistence layer looks up *unconditionally* at startup — it is not optional, despite the surrounding `mysql_connection_pool` variable name suggesting a choice (`defaults/main.yml` sets it `true` for exactly this reason). Without it, Tomcat starts but the appliance never leaves its startup retry loop, `PVTypeInfo` stays empty, and the management interface returns HTTP 503/500 indefinitely - confirmed directly on a from-zero install, where this path had never previously been exercised (every earlier test in this project's history reused an already-provisioned Tomcat, where `install_tomcat.yml`'s `context.xml` task is skipped entirely once Tomcat exists). The JDBC URL in this file uses `localhost`, matching every other MariaDB connection in this role - if you ever see it referencing anything else, that is this exact bug returning.
 
 **The healthcheck run itself lives outside this role**, in `ansible/tasks/run_archiver_healthcheck.yml`, imported as the last task in `playbook.yml` — after every role has finished — for the same reason the Training-VM homepage reassembly handler is defined at the play level rather than inside any one role: it must run regardless of which other roles were enabled, and only once everything it depends on (firewall ports, homepage footer) is genuinely in place.
 
-**Follow-up work, not yet implemented** (tracked, not forgotten): a production-managed heartbeat IOC via procServ + systemd (currently, the transient test IOC started by the healthcheck script serves this verification purpose); ElasticSearch-aware backup for Olog, which shares the same underlying gap as this role's current lack of an Archiver backup mechanism.
+**Follow-up work, not yet implemented** (tracked, not forgotten): ElasticSearch-aware backup for Olog and the Archiver Appliance - neither currently has a backup mechanism (see `doc/rapids/olog-server.md`, section 6, for the reasoning). For running your own production IOCs under procServ/systemd, see `doc/rapids/procserv-manual.md` - the transient test IOC this healthcheck starts is diagnostic only, not a template for production use.
