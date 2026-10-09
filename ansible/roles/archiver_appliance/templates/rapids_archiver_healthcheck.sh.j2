@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
-# rapids_archiver_tests.sh
+# rapids_archiver_healthcheck.sh
 # RAPIDS - tests of the EPICS Archiver Appliance on an installed machine
-# (test plan 25 Sep 2026)
 #
 #   V   component versions (for the record)
 #   A1  services, ports, appliance identity
@@ -19,9 +18,10 @@
 #
 # The soft IOC is left RUNNING (pid in ~/archiver-test-ioc.pid) so that the
 # PVs keep being archived for the later tests (update.sh, reboot, disconnection).
-#   bash ~/rapids_archiver_tests.sh               # all tests (about 5 minutes)
-#   bash ~/rapids_archiver_tests.sh --no-restart  # skip A5a
-#   bash ~/rapids_archiver_tests.sh --stop-ioc    # only stop the test IOC
+#   bash rapids_archiver_healthcheck.sh               # all tests (about 5 minutes)
+#   bash rapids_archiver_healthcheck.sh --no-restart  # skip A5a
+#   bash rapids_archiver_healthcheck.sh --stop-ioc    # only stop the test IOC
+# Installed by RAPIDS at /opt/epics-tools/archiver/scripts/rapids_archiver_healthcheck.sh
 # Report: ~/archiver-tests-<date>.txt
 # =============================================================================
 set -u
@@ -202,5 +202,5 @@ info "journal errors for archiver-appliance: $n"
 n=$(sudo find /var/log/tomcat -type f -mmin -60 -exec grep -h -c ' ERROR ' {} + 2>/dev/null | awk '{s+=$1} END {print s+0}')
 info "ERROR lines in /var/log/tomcat modified in the last hour: ${n:-0}"
 
-echo; echo "Test IOC still running (pid $(cat "$PIDFILE" 2>/dev/null)); stop with: bash ~/rapids_archiver_tests.sh --stop-ioc"
+echo; echo "Test IOC still running (pid $(cat "$PIDFILE" 2>/dev/null)); stop with: bash rapids_archiver_healthcheck.sh --stop-ioc"
 echo "SUMMARY: PASS=$PASS FAIL=$FAIL WARN=$WARN   report: $REPORT"
