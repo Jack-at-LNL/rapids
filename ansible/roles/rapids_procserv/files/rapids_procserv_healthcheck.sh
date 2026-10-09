@@ -14,9 +14,18 @@
 #       under /etc/procServ.d/*.conf (this script never starts, stops, or
 #       modifies them - see doc/rapids/procserv-manual.md)
 #
-# Usage (as the epics-dev / operator user on the test machine):
-#   bash ~/rapids_procserv_healthcheck.sh
-#   PROCSERV_SELFCHECK_PORT=4099 bash ~/rapids_procserv_healthcheck.sh   # avoid a port already in use
+# Usage (as the epics-dev / operator user; installed by RAPIDS at
+# /opt/epics-tools/procserv/scripts/rapids_procserv_healthcheck.sh, but
+# safe to run from any location, e.g. after copying it to your home dir):
+#   bash rapids_procserv_healthcheck.sh
+#   PROCSERV_SELFCHECK_PORT=4099 bash rapids_procserv_healthcheck.sh   # avoid a port already in use
+#
+# Recognized environment variables (all optional):
+#   RAPIDS_PROJECT_NAME      self-check PV prefix (default: rapids)
+#   RAPIDS_INSTANCE_NAME     self-check PV prefix (default: vm)
+#   PROCSERV_PREFIX          procServ/manage-procs install prefix (default: /usr/local)
+#   PROCSERV_SELFCHECK_PORT  telnet port for the self-check instance (default: 4051)
+#   PROCSERV_SELFCHECK_DIR   self-check working directory (default: /opt/epics-tools/procserv/selfcheck)
 # Report: ~/procserv-tests-<date>.txt
 # =============================================================================
 set -u
@@ -24,7 +33,6 @@ PREFIX=${PROCSERV_PREFIX:-/usr/local}
 PORT=${PROCSERV_SELFCHECK_PORT:-4051}
 PROJECT=${RAPIDS_PROJECT_NAME:-rapids}
 INSTANCE=${RAPIDS_INSTANCE_NAME:-vm}
-IOCS_DIR=${PROCSERV_IOCS_DIR:-/opt/epics/iocs}
 REPORT=~/procserv-tests-$(date +%Y%m%d-%H%M).txt
 PASS=0; FAIL=0; WARN=0
 exec > >(tee "$REPORT") 2>&1
@@ -73,7 +81,8 @@ echo; echo "P3 End-to-end self-check (sine wave, transient)"
 NAME=selfcheck
 PVPREFIX="${PROJECT}:${INSTANCE}:procserv-selfcheck"
 # RAPIDS's own diagnostic artifact - deliberately NOT placed under
-# IOCS_DIR, which is reserved for the operator's own production IOCs.
+# rapids_procserv_iocs_dir (/opt/epics/iocs by default), which is
+# reserved for the operator's own production IOCs.
 WORKDIR="${PROCSERV_SELFCHECK_DIR:-/opt/epics-tools/procserv/selfcheck}"
 if ! sudo mkdir -p "$WORKDIR" || ! sudo chown "$(whoami):$(id -gn)" "$WORKDIR"; then
     bad "could not create/own $WORKDIR - skipping P3"
