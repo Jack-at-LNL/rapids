@@ -31,8 +31,8 @@ STS=$(sed -n "s/^export ARCHAPPL_SHORT_TERM_FOLDER=\"\(.*\)\"/\1/p" "$TOMCAT/bin
 STS=${STS:-$TOMCAT/storage/sts}
 PIDFILE=~/archiver-test-ioc.pid
 DB=~/archiver-test-ioc.db
-PV_CNT={{ rapids_project_name }}:{{ rapids_instance_name | default('vm') }}:healthcheck:counter
-PV_NOISE={{ rapids_project_name }}:{{ rapids_instance_name | default('vm') }}:healthcheck:noise
+PV_CNT="{{ rapids_project_name }}:{{ rapids_instance_name | default('vm') }}:healthcheck:counter"
+PV_NOISE="{{ rapids_project_name }}:{{ rapids_instance_name | default('vm') }}:healthcheck:noise"
 REPORT=~/archiver-tests-$(date +%Y%m%d-%H%M).txt
 DO_RESTART=yes
 for a in "$@"; do
