@@ -1,65 +1,90 @@
-# Powerful Flexible Modular Scripted VM-Setup for EPICS
+# RAPIDS
 
-This Training-VM repo contains code (and documentation)
-to set up a virtual machine with EPICS Base and other modules
-in a scripted, reproducible fashion.
+**Rapid Automated Production Infrastructure Deployment System** — turn a vanilla Linux box into a complete, production-capable EPICS control system, labeled with your own project's identity, in a few hours.
 
-The original and main use case are EPICS Training events,
-where each event uses a different set of training modules.
-Nevertheless, the setup can also be used
-to prepare a personal development machine
-or to prepare portable small instances of "control system"
-that can be deployed at collaborators, vendors or customers.
+## Why RAPIDS exists
 
-A setup for a specific event can be prepared and updated remotely,
-allowing to distribute an "empty" VM
-that pulls and installs everything needed for a specific training event
-from remote git repos.
-(This install process will take some time - depending on host and setup -
-typically under an hour.)
+Large accelerator facilities and national laboratories typically have dedicated controls teams: engineers whose job is building and running the central EPICS control system, day in and day out. That expertise is exactly what makes a production-grade control system possible — and exactly what most beamlines, experiments, and technological plants *don't* have, and don't need full-time.
 
-To minimize the install time,
-a "fully installed" VM can also be distributed,
-keeping the possibility to update the content at any time
-with last-minute changes.
+A beamline or a small experiment needs its own logbook, its own archiver, its own working IOCs — but it rarely needs, and often can't justify, being folded into the central facility's control system. The central team's own system has its own release cycle, its own change-control process, its own priorities — it simply isn't built to be as dynamic and specific as one experiment's actual needs: a private logbook that only matters for a handful of shifts, an archiver scoped to one beamline's own PVs, a control system that one small team can own, understand, and modify without needing to negotiate with anyone else.
 
-## Goals
+The same gap shows up outside beamlines too: a facility's technological plant — cooling, vacuum, access control, anything that benefits from EPICS integration — often needs its own self-contained control system, not a slice of the central one, and often has no dedicated controls engineer to build it by hand.
 
-We hope to achieve two main goals:
+**RAPIDS exists to close that gap**, and it already does, in production: at INFN Laboratori Nazionali di Legnaro, RAPIDS runs the EPICS control system for **ANTHEM** (the Italian BNCT patient-treatment project) and is in use for the **Nuclei** beamline experiment — both small teams without a dedicated controls engineer, both running a complete, correctly-configured EPICS stack they own and understand.
 
-1. Provide a portable platform for hands-on training events
-   that is shared, modular, extensible
-   and adapted to the workflow of preparing a training event.
+Declare your project's own identity — name, institution, contact person — and what you need, in one file, `local.yml`. Every installation is labeled with that identity throughout: on the management interfaces, in the Olog logbook, in the generated documentation footers — your installation is unmistakably *yours*, not a generic default; this is "proprietary" in the sense of belonging to and being identified with your facility or experiment, not in the sense of commercial or closed-source — RAPIDS itself stays open. In a few hours you have a complete, production-capable EPICS control system: Archiver Appliance, Olog logbook, a working development and IOC-hosting environment, all correctly wired together, all self-tested. The same box doubles as a genuine development workstation, not just a production appliance — a solid foundation to build on, not a black box.
 
-2. Use the Training-VM to show a (scripted) good-practice way
-   of setting up an EPICS system: download released sources,
-   compile and set up from scratch, using standard methods and
-   structures.
+RAPIDS is a fork of the [EPICS Training-VM](https://github.com/epics-training/training-vm) project, and it keeps that heritage deliberately: the same scripted, reproducible, from-source philosophy that makes Training-VM a good *teaching* tool is exactly what makes RAPIDS a trustworthy foundation for a *production* one.
 
-A Training-VM instance should not only be a fully functional minimal system,
-but also - in the setup scripts - contain the instructions how to get there.
+**Tested today on AlmaLinux/Rocky (RPM-based RHEL derivatives).** This is a real constraint, not an assumption baked into the design — porting to Ubuntu/Debian is a genuinely plausible next step, and one we'd actively take on if the community asks for it. If that's you, open an issue and say so.
 
-## Technology
+## What you get
 
-We are using [QEMU](https://www.qemu.org/) and [cloud-init](https://cloud-init.io/)
-to create and provision the virtual machine.
-The resulting images are compatible with QEMU and [VirtualBox](https://www.oracle.com/virtualization/virtualbox/).
+Everything is independently toggled in `local.yml` — enable only what your project needs:
 
-We are using [Ansible](https://docs.ansible.com/)
-to install and configure the software on the Training-VM.
+| Component | What it is |
+|---|---|
+| EPICS Base + support modules | Built from source, the core of any EPICS system |
+| Phoebus | The EPICS GUI client, built from source |
+| Archiver Appliance | Full three-tier (STS/MTS/LTS) PV data archiving |
+| Olog | Electronic logbook, with accounts, logbooks, and tags scoped to your project |
+| procServ / manage-procs | Run your own IOCs as supervised, reboot-surviving systemd services |
+| NTP sync (chrony) | A shared time reference so PVs from different boxes correlate correctly |
+| Firewall rules | Scoped automatically to whatever you actually enabled |
+| A project-branded landing page | Links to everything above, labeled with your project's identity |
 
-## Workflow
+See [`doc/rapids/architecture.md`](doc/rapids/architecture.md) for how these fit together.
 
-There are two steps to create a Training-VM instance:
+## 5-minute quickstart
 
-1. Create the VM
-   ([manually](doc/creating-vm-from-scratch.md) or
-   [using cloud-init](doc/creating-vm-using-cloud-init.md))
-2. [Bootstrap and Update](doc/bootstrap-update-vm.md) the Training-VM
-   to install the training-specific software and content
+Starting from a vanilla AlmaLinux or Rocky Linux box, logged in as a regular user with sudo rights:
 
-The [instructions](doc/instructions.md)
-show in more detail how to set up your VM instance.
-If you already have set up your VM,
-you can directly jump to the
-[bootstrap and update section](doc/bootstrap-update-vm.md).
+```bash
+# 1. Install EPEL (needed by some RAPIDS components)
+sudo dnf install -y epel-release
+
+# 2. Let Ansible run privileged tasks without a password prompt
+sudo visudo
+# add a line like: youruser ALL=(ALL) NOPASSWD: ALL
+
+# 3. Point the installer at RAPIDS instead of the stock Training-VM
+cat > ~/bootstrap_setup << 'EOF'
+SLUG=main
+REPO[vm-setup]=https://github.com/Jack-at-LNL/rapids.git
+BRANCH[vm-setup]=rapids
+EOF
+
+# 4. Bootstrap: installs git/ansible, clones everything, creates local.yml
+eval "$(curl -L https://raw.githubusercontent.com/Jack-at-LNL/rapids/rapids/bootstrap.sh)"
+cd training
+
+# 5. Declare your project: edit local.yml - project name, institution,
+#    contact person, and which components (above) to enable
+nano local.yml
+
+# 6. Install
+vm-setup/update.sh --ask-vault-pass
+```
+
+That's it — `update.sh` builds, configures, starts, and self-tests everything you enabled. For the full, detailed walkthrough of every `local.yml` setting (vault-encrypted passwords, storage layout, retention policy, accounts, NTP servers, and more), see [`doc/rapids/local-yml-guide.md`](doc/rapids/local-yml-guide.md).
+
+## Documentation
+
+- [`doc/rapids/architecture.md`](doc/rapids/architecture.md) — how the pieces fit together
+- [`doc/rapids/local-yml-guide.md`](doc/rapids/local-yml-guide.md) — every `local.yml` setting, explained
+- [`doc/rapids/archiver-appliance.md`](doc/rapids/archiver-appliance.md) — Archiver Appliance setup, operation, troubleshooting
+- [`doc/rapids/olog-server.md`](doc/rapids/olog-server.md) — Olog accounts, logbooks, troubleshooting
+- [`doc/rapids/procserv-manual.md`](doc/rapids/procserv-manual.md) — running your own IOCs under procServ
+- [`doc/rapids/ntp-sync-server.md`](doc/rapids/ntp-sync-server.md) — why and how to synchronize time across the project
+
+## License
+
+RAPIDS does not carry a formal license file, matching the upstream [Training-VM](https://github.com/epics-training/training-vm) project it is forked from. Treat it in the same open, collaborative spirit as the wider EPICS community: use it, fork it, adapt it to your project, and please consider sharing improvements back.
+
+## Next steps
+
+Things that are genuinely open, not hidden:
+
+- **Ubuntu/Debian support** — RAPIDS is intensively tested on AlmaLinux/Rocky today; porting to Debian-family systems is a real possibility on request from the community, not a closed door.
+- **Olog and Archiver Appliance backup** — neither currently has a built-in backup mechanism; see each manual's own notes for the reasoning and what a correct implementation would need.
+- Questions, issues, and collaboration are welcome — open an issue on this repository.
