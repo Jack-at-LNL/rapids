@@ -54,12 +54,16 @@ REPO[vm-setup]=https://github.com/Jack-at-LNL/rapids.git
 BRANCH[vm-setup]=rapids
 EOF
 
-# 4. Bootstrap: installs git/ansible, clones everything, creates local.yml
+# 4. Bootstrap: installs git/ansible, clones everything
 eval "$(curl -L https://raw.githubusercontent.com/Jack-at-LNL/rapids/rapids/bootstrap.sh)"
 cd training
 
-# 5. Declare your project: edit local.yml - project name, institution,
-#    contact person, and which components (above) to enable
+# 5. Replace the generic default local.yml with RAPIDS's own sample, then
+#    edit it: project name, institution, contact person, and which
+#    components (above) to enable. (The training-collection repo this is
+#    based on ships its own generic local.yml at this path - RAPIDS's real
+#    settings live in vm-setup/ansible/vars/local.yml.sample instead.)
+cp vm-setup/ansible/vars/local.yml.sample local.yml
 nano local.yml
 
 # 6. Install

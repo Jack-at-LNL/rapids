@@ -14,6 +14,14 @@ You can also keep multiple named configurations side by side (e.g. for testing a
 ansible-playbook ... playbook.yml -e @vars/myVM.yml
 ```
 
+**A real gotcha, found during a genuinely fresh GitHub clone test:** the outer `training-collection` repository (cloned first by `bootstrap.sh`, before it even touches `vm-setup`) ships its own committed, generic `local.yml` at the collection root. `bootstrap.sh` only creates `local.yml` from `vars/local.yml.sample` when `local.yml` doesn't already exist - so a fresh bootstrap leaves you with upstream's generic example, not RAPIDS's own. After bootstrapping, explicitly replace it before editing:
+
+```bash
+cp vm-setup/ansible/vars/local.yml.sample local.yml
+```
+
+The README's quickstart already includes this step - it's called out here too because it's easy to miss if you're following an older guide or doing this by hand.
+
 ## 2. Modules to build
 
 ```yaml
