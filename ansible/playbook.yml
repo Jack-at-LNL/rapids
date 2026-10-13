@@ -46,12 +46,16 @@
     - name: Initial setup
       include_role:
         name: initial_setup
+        apply:
+          tags: initial_setup
       when: initial_setup is defined and initial_setup | bool
       tags: initial_setup
 
     - name: CA trust
       include_role:
         name: catrust
+        apply:
+          tags: catrust
       when: catrust is defined and catrust | bool
       tags: catrust
 
@@ -59,84 +63,112 @@
     - name: System time
       include_role:
         name: system_time
+        apply:
+          tags: system_time
       when: system_time is defined and system_time | bool
       tags: system_time
 
     - name: EPICS Base
       include_role:
         name: m_base
+        apply:
+          tags: m_base
       when: m_base is defined and m_base | bool
       tags: m_base
 
     - name: ASYN
       include_role:
         name: m_asyn
+        apply:
+          tags: m_asyn
       when: m_asyn is defined and m_asyn | bool
       tags: m_asyn
 
     - name: Autosave
       include_role:
         name: m_autosave
+        apply:
+          tags: m_autosave
       when: m_autosave is defined and m_autosave | bool
       tags: m_autosave
 
     - name: SScan
       include_role:
         name: m_sscan
+        apply:
+          tags: m_sscan
       when: m_sscan is defined and m_sscan | bool
       tags: m_sscan
 
     - name: Calc
       include_role:
         name: m_calc
+        apply:
+          tags: m_calc
       when: m_calc is defined and m_calc | bool
       tags: m_calc
 
     - name: Busy
       include_role:
         name: m_busy
+        apply:
+          tags: m_busy
       when: m_busy is defined and m_busy | bool
       tags: m_busy
 
     - name: AreaDetector
       include_role:
         name: m_areadetector
+        apply:
+          tags: m_areadetector
       when: m_areadetector is defined and m_areadetector | bool
       tags: m_areadetector
 
     - name: OPC UA
       include_role:
         name: m_opcua
+        apply:
+          tags: m_opcua
       when: m_opcua is defined and m_opcua | bool
       tags: m_opcua
 
     - name: P4P
       include_role:
         name: m_p4p
+        apply:
+          tags: m_p4p
       when: m_p4p is defined and m_p4p | bool
       tags: m_p4p
 
     - name: pvaPy
       include_role:
         name: m_pvaPy
+        apply:
+          tags: m_pvaPy
       when: m_pvaPy is defined and m_pvaPy | bool
       tags: m_pvaPy
 
     - name: Sequencer
       include_role:
         name: m_seq
+        apply:
+          tags: m_seq
       when: m_seq is defined and m_seq | bool
       tags: m_seq
 
     - name: StreamDevice
       include_role:
         name: m_stream
+        apply:
+          tags: m_stream
       when: m_stream is defined and m_stream | bool
       tags: m_stream
 
     - name: Docker
       include_role:
         name: docker
+        apply:
+          tags: docker
       when: docker is defined and docker | bool
       tags: docker
 
@@ -153,18 +185,24 @@
     - name: Phoebus
       include_role:
         name: phoebus
+        apply:
+          tags: phoebus
       when: phoebus is defined and phoebus | bool
       tags: phoebus
 
     - name: OAC Tree
       include_role:
         name: oac_tree
+        apply:
+          tags: oac_tree
       when: oac_tree is defined and oac_tree | bool
       tags: oac_tree
 
     - name: Archiver Appliance
       include_role:
         name: archiver_appliance
+        apply:
+          tags: archiver_appliance
       when: archiver_appliance is defined and archiver_appliance | bool
       tags: archiver_appliance
 
@@ -172,6 +210,8 @@
     - name: RAPIDS landing page
       include_role:
         name: rapids_landing_page
+        apply:
+          tags: rapids_landing_page
       when:
         - archiver_appliance is defined and archiver_appliance | bool
         - rapids_landing_page | default(true) | bool
