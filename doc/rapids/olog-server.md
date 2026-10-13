@@ -122,11 +122,13 @@ curl -X PUT http://localhost:8080/Olog/logs \
 
 ### 5.0 Automatic healthcheck — start here
 
-A verification script (`rapids_olog_healthcheck.sh`) runs **automatically, once, at the end of installation** - services, authentication (including that Olog's built-in demo accounts are correctly refused), logbook/tag/entry/attachment round-trips through the real REST API, an optional restart-persistence check, and confirmation that no backup mechanism is unexpectedly present (Section 6). Its result appears directly in the install output:
+A verification script (`rapids_olog_healthcheck.sh`) runs **automatically, once, at the end of installation** - services, authentication (including that Olog's built-in demo accounts are correctly refused), logbook/tag/entry/attachment round-trips through the real REST API, an optional restart-persistence check, and confirmation that no backup mechanism is unexpectedly present. Its result appears directly in the install output:
 
 ```
 SUMMARY: PASS=26 FAIL=0 WARN=1   report: /home/epics-dev/olog-tests-<date>.txt   ids: /home/epics-dev/olog-test-ids.txt
 ```
+
+The expected `WARN=1` is almost always the note about port 8389 - see section 5.2.
 
 It stays installed afterward for manual re-runs:
 
@@ -153,9 +155,11 @@ sudo journalctl -u <service> -n 50 --no-pager
 ### 5.2 Are the ports actually listening?
 
 ```bash
-ss -tlnp | grep -E ":8080|:9200|:27017"
+ss -tlnp | grep -E ":8080|:9200|:27017|:8389"
 ```
 Expect `8080` (Olog, all interfaces), `9200` (ElasticSearch, loopback only), `27017` (MongoDB, loopback only). If Olog's port is missing, check `journalctl -u olog`; a missing 9200 or 27017 means the Olog service will start but every API call will fail or hang.
+
+**Port 8389** is Olog's Spring Boot Actuator management endpoint, bound to all interfaces but not opened in the firewall (only `8080/tcp` is) - not reachable from outside this host despite the `0.0.0.0` bind.
 
 ### 5.3 Is Olog itself healthy, and can it see its dependencies?
 
@@ -251,13 +255,7 @@ curl -s http://localhost:8080/Olog/tags | python3 -c 'import sys,json; print(len
 curl -s "http://localhost:8080/Olog/logs/search?size=1000" | python3 -c 'import sys,json; print(len(json.load(sys.stdin)["logs"]), "entries")'
 ```
 
-## 6. Backup
-
-**Current status: not implemented.** An earlier `backup-now.sh`/`restore-backup.sh` pair only ran `mongodump` and copied config — it never touched ElasticSearch, where actual log entry content and the logbook/tag definitions themselves live (Section 5.3 shows exactly why this matters: ES down = logbooks unreachable). Every backup taken under those scripts protected almost nothing and has been removed. A correct implementation needs ElasticSearch's own snapshot API (`path.repo` plus a registered repository, snapshotted alongside `mongodump`), not a filesystem copy of a live cluster's data directory. This is a tracked follow-up, not yet built — don't assume your log data is currently protected.
-
-What still works: `manage-logbooks.sh` / `manage-tags.sh` (Section 3).
-
-## 7. Phoebus Client Integration
+## 6. Phoebus Client Integration
 
 File: `/opt/epics-tools/config/preferences.ini`. Launcher: `/usr/local/bin/run-phoebus`.
 
@@ -285,10 +283,10 @@ For anyone who needs to modify how this is installed, not just operate it day-to
 4. `install_olog.yml` — clones and builds `phoebus-olog` with Maven, renders `rapids-users.ldif.j2` and `application.properties`
 5. Login/auth verification against the running service
 6. `seed_initial_data.yml` — creates `olog_initial_logbooks`/`olog_initial_tags` via the REST API
-7. `setup_backup.yml` — installs `manage-logbooks.sh`/`manage-tags.sh` (backup removed, Section 6) and `rapids_olog_healthcheck.sh`, then runs it non-interactively (`OLOG_PASSWORD` via environment - Section 5.0)
+7. `setup_backup.yml` — installs `manage-logbooks.sh`/`manage-tags.sh` and `rapids_olog_healthcheck.sh`, then runs it non-interactively (`OLOG_PASSWORD` via environment - Section 5.0)
 
 **Key variables** (`defaults/main.yml`, overridden in `local.yml`): `olog_admin_user`, `olog_admin_password`, `olog_users`, `olog_initial_logbooks`, `olog_initial_tags`, `olog_install_dir`, `olog_port`.
 
 **Templates:** `templates/rapids-users.ldif.j2` (accounts/groups), `templates/scripts/manage-*.sh.j2`. `files/scripts/rapids_olog_healthcheck.sh` is a plain copy, not templated - it reads its scope (project/instance context, password) entirely from the environment at runtime, same pattern as the Archiver and procServ healthcheck scripts.
 
-**Companion role:** `phoebus_client_config` writes the Phoebus-side block into `/opt/epics-tools/config/preferences.ini` (Section 7); its file path is set by `phoebus_settings_file` in its own defaults, matching what `/usr/local/bin/run-phoebus` (installed by the `phoebus` role) actually launches with.
+**Companion role:** `phoebus_client_config` writes the Phoebus-side block into `/opt/epics-tools/config/preferences.ini` (Section 6); its file path is set by `phoebus_settings_file` in its own defaults, matching what `/usr/local/bin/run-phoebus` (installed by the `phoebus` role) actually launches with.
