@@ -7,27 +7,31 @@ A one-page picture of how RAPIDS fits together — for the per-component details
 RAPIDS turns a vanilla Linux box into a working, production-capable EPICS control system by running a single Ansible playbook, driven entirely by one file you edit: `local.yml`.
 
 ## The layers
-ocal.yml <- the one file you edit: what to install, your project's
-identity, your credentials (vault-encrypted)
-|
-v
+
+```text
+local.yml <- the one file you edit: what to install, your project's
+             identity, your credentials (vault-encrypted)
+  |
+  v
 ansible/playbook.yml <- reads local.yml, decides which roles to run
-|
-v
+  |
+  v
 Ansible roles <- one role per capability, each independently toggled
-|
-+-- system_time <- NTP sync (chrony), runs first - see ntp-sync-server.md
-+-- m_base, m_asyn, ... <- EPICS Base and support modules, built from source
-+-- phoebus <- the EPICS GUI client, built from source
-+-- archiver_appliance <- EPICS Archiver Appliance + Tomcat + MariaDB
-+-- olog_server <- Olog electronic logbook + ElasticSearch + MongoDB
-+-- rapids_procserv <- procServ + manage-procs, for running your own IOCs
-+-- rapids_security <- firewall rules scoped to what's actually enabled
-+-- rapids_landing_page <- a project-branded homepage linking everything up
-+-- phoebus_client_config <- wires Phoebus to Olog/Archiver automatically
-|
-v
+  |
+  +-- system_time <- NTP sync (chrony), runs first - see ntp-sync-server.md
+  +-- m_base, m_asyn, ... <- EPICS Base and support modules, built from source
+  +-- phoebus <- the EPICS GUI client, built from source
+  +-- archiver_appliance <- EPICS Archiver Appliance + Tomcat + MariaDB
+  +-- olog_server <- Olog electronic logbook + ElasticSearch + MongoDB
+  +-- rapids_procserv <- procServ + manage-procs, for running your own IOCs
+  +-- rapids_security <- firewall rules scoped to what's actually enabled
+  +-- rapids_landing_page <- a project-branded homepage linking everything up
+  +-- phoebus_client_config <- wires Phoebus to Olog/Archiver automatically
+  |
+  v
 A running control system <- services active, firewalled, self-tested
+```
+
 ## Three ideas that shape everything else
 
 **Declarative, not imperative.** `local.yml` describes the state you want; running `update.sh` brings the machine to that state, whether it's a first install or the hundredth re-run. Nothing is hand-run once and forgotten — if it matters, it's in `local.yml` and Ansible owns it.
