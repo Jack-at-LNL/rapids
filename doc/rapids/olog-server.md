@@ -125,7 +125,7 @@ curl -X PUT http://localhost:8080/Olog/logs \
 A verification script (`rapids_olog_healthcheck.sh`) runs **automatically, once, at the end of installation** - services, authentication (including that Olog's built-in demo accounts are correctly refused), logbook/tag/entry/attachment round-trips through the real REST API, an optional restart-persistence check, and confirmation that no backup mechanism is unexpectedly present. Its result appears directly in the install output:
 
 ```
-SUMMARY: PASS=26 FAIL=0 WARN=1   report: /home/epics-dev/olog-tests-<date>.txt   ids: /home/epics-dev/olog-test-ids.txt
+SUMMARY: PASS=26 FAIL=0 WARN=1   report: /home/epics-dev/rapids-selfchecks/olog-tests-<date>.txt   ids: /home/epics-dev/rapids-selfchecks/olog-test-ids.txt
 ```
 
 The expected `WARN=1` is almost always the note about port 8389 - see section 5.2.

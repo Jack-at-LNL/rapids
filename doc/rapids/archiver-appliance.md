@@ -49,7 +49,7 @@ To add a genuinely new policy or change the field-archiving logic, edit `ansible
 A verification script runs **automatically, once, at the very end of installation** — after every other role (firewall, homepage, Olog, Phoebus client config) has finished, so its own checks (archiving, firewall-dependent PV access) aren't run against a half-configured system. Its result appears directly in the install output:
 
 ```
-SUMMARY: PASS=14 FAIL=0 WARN=2   report: /home/epics-dev/archiver-tests-<date>.txt
+SUMMARY: PASS=14 FAIL=0 WARN=2   report: /home/epics-dev/rapids-selfchecks/archiver-tests-<date>.txt
 ```
 
 It stays installed afterward for manual re-runs:
@@ -60,7 +60,7 @@ bash -l /opt/epics-tools/archiver/scripts/rapids_archiver_healthcheck.sh --no-re
 bash -l /opt/epics-tools/archiver/scripts/rapids_archiver_healthcheck.sh --stop-ioc     # stop the test IOC it starts
 ```
 
-It checks, in order: service/port status, the management page, end-to-end archiving of two test PVs (`{{ rapids_project_name }}:{{ rapids_instance_name }}:healthcheck:counter` over PV Access, `...:healthcheck:noise` over Channel Access — see `local.yml.sample` for `rapids_instance_name`, which keeps two RAPIDS installs on the same network from colliding on these names), short-term storage growth, and exposure/credential warnings — a complete report is written to `~/archiver-tests-<timestamp>.txt`.
+It checks, in order: service/port status, the management page, end-to-end archiving of two test PVs (`{{ rapids_project_name }}:{{ rapids_instance_name }}:healthcheck:counter` over PV Access, `...:healthcheck:noise` over Channel Access — see `local.yml.sample` for `rapids_instance_name`, which keeps two RAPIDS installs on the same network from colliding on these names), short-term storage growth, and exposure/credential warnings — a complete report is written to `~/rapids-selfchecks/archiver-tests-<timestamp>.txt`.
 
 ## 5. CLI Reference
 

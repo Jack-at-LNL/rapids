@@ -93,7 +93,7 @@ bash /opt/epics-tools/procserv/scripts/rapids_procserv_healthcheck.sh
 ```
 
 It reports four sections, each independently, and writes a timestamped
-report to `~/procserv-tests-<date>.txt`:
+report to `~/rapids-selfchecks/procserv-tests-<date>.txt`:
 
 - **P1** — procServ and `manage-procs` are installed and resolvable
   (including the exact `PATH`/`procServ-launcher` resolution problem
