@@ -25,6 +25,10 @@
 #   RAPIDS_INSTANCE_NAME     self-check PV prefix (default: vm)
 #   PROCSERV_PREFIX          procServ/manage-procs install prefix (default: /usr/local)
 #   PROCSERV_SELFCHECK_PORT  telnet port for the self-check instance (default: 4051)
+#   PROCSERV_SELFCHECK_CA_PORT  dedicated Channel Access server port for the
+#                            self-check IOC, kept clear of the EPICS default
+#                            (5064) and of anything else already running on
+#                            this host (default: 5078; beacon port is this+1)
 #   PROCSERV_SELFCHECK_DIR   self-check working directory (default: /opt/epics-tools/procserv/selfcheck)
 # Report: ~/procserv-tests-<date>.txt
 # =============================================================================
@@ -104,15 +108,34 @@ DBEOF
 fi
 
 SOFTIOC=$(bash -l -c 'command -v softIocPVX' 2>/dev/null)
+CAGET=$(bash -l -c 'command -v caget' 2>/dev/null)
 if [ -z "$WORKDIR" ]; then
     : # already reported above
 elif [ -z "$SOFTIOC" ]; then
     bad "softIocPVX not found (run in a login shell: bash -l); skipping P3"
+elif [ -z "$CAGET" ]; then
+    bad "caget not found, even via a login shell (checked EPICS Base's bin dir on PATH); skipping P3"
 else
+    # Give this throwaway self-check IOC its own dedicated Channel Access
+    # port pair, well clear of the EPICS default (5064/5065) and of any
+    # other IOC that may already be running on this host (e.g. a leftover
+    # Archiver test IOC) - so this self-check never depends on being the
+    # only CA server around.
+    CAPORT="${PROCSERV_SELFCHECK_CA_PORT:-5078}"
+    BEACONPORT="$((CAPORT + 1))"
+
+    {
+        echo '#!/usr/bin/env bash'
+        echo "export EPICS_CAS_SERVER_PORT=$CAPORT"
+        echo "export EPICS_CAS_BEACON_PORT=$BEACONPORT"
+        echo "exec \"$SOFTIOC\" -S -d selfcheck.db"
+    } > "$WORKDIR/run-selfcheck.sh"
+    chmod +x "$WORKDIR/run-selfcheck.sh"
+
     sudo env PATH="$PATH" PYTHONPATH="$PYTHONPATH" manage-procs --system remove "$NAME" -f >/dev/null 2>&1
     addout=$(sudo env PATH="$PATH" PYTHONPATH="$PYTHONPATH" manage-procs --system add -C "$WORKDIR" -P "$PORT" \
          -U "$(whoami)" -G "$(id -gn)" -A "$NAME" \
-         "$SOFTIOC" -S -d selfcheck.db 2>&1)
+         "$WORKDIR/run-selfcheck.sh" 2>&1)
     if [ $? -eq 0 ]; then
         ok "manage-procs add succeeded (instance $NAME, port $PORT)"
     else
@@ -135,13 +158,21 @@ else
     [ "$ready" = yes ] && ok "service active" || bad "service did not reach active state"
 
     val=""
+    caerr=""
     for i in $(seq 1 8); do
-        val=$(caget -t -w 3 "${PVPREFIX}:sine" 2>/dev/null)
-        [ -n "$val" ] && break
+        val=$(EPICS_CA_AUTO_ADDR_LIST=NO EPICS_CA_ADDR_LIST="127.0.0.1" EPICS_CA_SERVER_PORT="$CAPORT" \
+              "$CAGET" -t -w 3 "${PVPREFIX}:sine" 2>&1)
+        rc=$?
+        [ $rc -eq 0 ] && [ -n "$val" ] && break
+        caerr="$val"; val=""
         sleep 3
     done
-    if [ -n "$val" ]; then ok "self-check PV reachable: ${PVPREFIX}:sine = $val"
-    else bad "self-check PV not reachable via caget"; fi
+    if [ -n "$val" ]; then
+        ok "self-check PV reachable: ${PVPREFIX}:sine = $val (dedicated CA port $CAPORT)"
+    else
+        bad "self-check PV not reachable via caget (dedicated CA port $CAPORT)"
+        [ -n "$caerr" ] && echo "         $caerr"
+    fi
 
     sudo systemctl stop "procserv-${NAME}" 2>/dev/null
     sudo systemctl disable "procserv-${NAME}" 2>/dev/null
