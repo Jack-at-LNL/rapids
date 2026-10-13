@@ -107,6 +107,10 @@ report to `~/procserv-tests-<date>.txt`:
   under the name `selfcheck` / PV prefix `...:procserv-selfcheck:...`.
   Its working directory is `/opt/epics-tools/procserv/selfcheck/`,
   deliberately **not** inside `rapids_procserv_iocs_dir` — see section 5.
+  The self-check IOC runs on its own dedicated Channel Access port pair
+  (default 5078/5079, override with `PROCSERV_SELFCHECK_CA_PORT`), kept
+  clear of the EPICS default (5064/5065) and of anything else already
+  running on the host — see section 8 for why this matters.
 - **P4** — a **read-only** report of any instance you have already
   declared under `/etc/procServ.d/*.conf`. This script never starts,
   stops, or modifies anything it finds here; it only reports active/
@@ -131,7 +135,8 @@ RAPIDS_PROJECT_NAME="MyProject" RAPIDS_INSTANCE_NAME="vm01" \
 ```
 
 Use `PROCSERV_SELFCHECK_PORT=<other>` if port 4051 is already in use on
-your box.
+your box, and `PROCSERV_SELFCHECK_CA_PORT=<other>` if 5078 is already in
+use for Channel Access.
 
 ## 5. Where your own IOCs go — and why it matters
 
@@ -222,6 +227,33 @@ check (or your own manual invocation of `manage-procs`) ran in a non-login
 shell; `epics-tools.sh`, which puts `softIocPVX` on `PATH`, is only
 sourced in a login shell. Use `bash -l -c 'command -v softIocPVX'`, not a
 bare `which`.
+
+**Self-check fails at P3 with "self-check PV not reachable via caget,"
+even though `service active` passed** — on a checkout from before October
+2026 this had two independent causes, both fixed since:
+1. `caget` was resolved via a plain `PATH` lookup rather than `bash -l -c`
+   (unlike the `softIocPVX` lookup right above, which already used a
+   login shell for exactly this reason). Under a non-login invocation —
+   which is how Ansible itself runs this script — `caget` was often not
+   on `PATH` at all, and the resulting "not found" error was silently
+   swallowed (redirected to `/dev/null`), indistinguishable from a
+   genuine connection timeout.
+2. The self-check's throwaway IOC used the EPICS default Channel Access
+   port (5064/5065). If anything else on the host — most commonly a
+   leftover Archiver healthcheck test IOC, deliberately left running
+   after its own successful test — was already using that port, the
+   self-check's IOC silently fell back to a dynamically-assigned port
+   and became unreliable to reach via a normal CA search.
+
+Both are fixed as of this writing: `caget` is resolved via `bash -l -c`,
+exactly like `softIocPVX`, with a distinct error message if it is
+genuinely missing; and the self-check now runs on its own dedicated CA
+port pair (default 5078/5079, see section 4), queried over direct
+unicast to `127.0.0.1` rather than relying on broadcast discovery. If
+you still see this failure on a current checkout, it is a genuine
+networking problem on that host, not the historical bug — check
+`firewall-cmd --list-all` and confirm nothing else is already bound to
+whatever port `PROCSERV_SELFCHECK_CA_PORT` resolves to.
 
 **A generated unit's `ExecStart` reads `None`** — `procServ-launcher`
 could not be resolved via `PATH` at `manage-procs add` time. Check `which
