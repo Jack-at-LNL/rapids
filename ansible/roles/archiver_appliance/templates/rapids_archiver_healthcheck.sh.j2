@@ -16,24 +16,26 @@
 #   A9  exposure and credentials: MariaDB listen address, default database
 #       password, management interface without login
 #
-# The soft IOC is left RUNNING (pid in ~/archiver-test-ioc.pid) so that the
+# The soft IOC is left RUNNING (pid in ~/rapids-selfchecks/archiver-test-ioc.pid) so that the
 # PVs keep being archived for the later tests (update.sh, reboot, disconnection).
 #   bash rapids_archiver_healthcheck.sh               # all tests (about 5 minutes)
 #   bash rapids_archiver_healthcheck.sh --no-restart  # skip A5a
 #   bash rapids_archiver_healthcheck.sh --stop-ioc    # only stop the test IOC
 # Installed by RAPIDS at /opt/epics-tools/archiver/scripts/rapids_archiver_healthcheck.sh
-# Report: ~/archiver-tests-<date>.txt
+# Report: ~/rapids-selfchecks/archiver-tests-<date>.txt
 # =============================================================================
 set -u
 AA=${AA_URL:-http://localhost:17665}
 TOMCAT=/opt/epics-tools/lib/tomcat
 STS=$(sed -n "s/^export ARCHAPPL_SHORT_TERM_FOLDER=\"\(.*\)\"/\1/p" "$TOMCAT/bin/setenv.sh" 2>/dev/null)
 STS=${STS:-$TOMCAT/storage/sts}
-PIDFILE=~/archiver-test-ioc.pid
-DB=~/archiver-test-ioc.db
+SELFCHECK_DIR="${RAPIDS_SELFCHECK_DIR:-$HOME/rapids-selfchecks}"
+mkdir -p "$SELFCHECK_DIR" 2>/dev/null
+PIDFILE="$SELFCHECK_DIR/archiver-test-ioc.pid"
+DB="$SELFCHECK_DIR/archiver-test-ioc.db"
 PV_CNT="{{ rapids_project_name }}:{{ rapids_instance_name | default('vm') }}:healthcheck:counter"
 PV_NOISE="{{ rapids_project_name }}:{{ rapids_instance_name | default('vm') }}:healthcheck:noise"
-REPORT=~/archiver-tests-$(date +%Y%m%d-%H%M).txt
+REPORT="$SELFCHECK_DIR/archiver-tests-$(date +%Y%m%d-%H%M).txt"
 DO_RESTART=yes
 for a in "$@"; do
     case "$a" in
@@ -104,7 +106,7 @@ record(calc, "$PV_CNT") { field(SCAN, "1 second") field(CALC, "A+1") field(INPA,
 record(calc, "$PV_NOISE") { field(SCAN, ".5 second") field(CALC, "RNDM*10") field(PREC, "3") }
 EOF
     if command -v softIocPVX >/dev/null; then
-        nohup softIocPVX -S -d "$DB" > ~/archiver-test-ioc.log 2>&1 &
+        nohup softIocPVX -S -d "$DB" > "$SELFCHECK_DIR/archiver-test-ioc.log" 2>&1 &
         echo $! > "$PIDFILE"; sleep 3
         caget -t -w 5 "$PV_CNT" >/dev/null 2>&1 && ok "test IOC started (pid $(cat "$PIDFILE"))" || bad "test IOC does not answer"
     else

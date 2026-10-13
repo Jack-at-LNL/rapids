@@ -30,14 +30,16 @@
 #                            (5064) and of anything else already running on
 #                            this host (default: 5078; beacon port is this+1)
 #   PROCSERV_SELFCHECK_DIR   self-check working directory (default: /opt/epics-tools/procserv/selfcheck)
-# Report: ~/procserv-tests-<date>.txt
+# Report: ~/rapids-selfchecks/procserv-tests-<date>.txt
 # =============================================================================
 set -u
 PREFIX=${PROCSERV_PREFIX:-/usr/local}
 PORT=${PROCSERV_SELFCHECK_PORT:-4051}
 PROJECT=${RAPIDS_PROJECT_NAME:-rapids}
 INSTANCE=${RAPIDS_INSTANCE_NAME:-vm}
-REPORT=~/procserv-tests-$(date +%Y%m%d-%H%M).txt
+SELFCHECK_DIR="${RAPIDS_SELFCHECK_DIR:-$HOME/rapids-selfchecks}"
+mkdir -p "$SELFCHECK_DIR" 2>/dev/null
+REPORT="$SELFCHECK_DIR/procserv-tests-$(date +%Y%m%d-%H%M).txt"
 PASS=0; FAIL=0; WARN=0
 exec > >(tee "$REPORT") 2>&1
 ok()   { echo "  [PASS] $*"; PASS=$((PASS+1)); }

@@ -21,7 +21,7 @@
 #   bash rapids_olog_healthcheck.sh                 # asks the Olog password
 #   OLOG_PASSWORD=... bash rapids_olog_healthcheck.sh   # non-interactive
 #   bash rapids_olog_healthcheck.sh --no-restart    # skip O6a (no service restart)
-# Report: ~/olog-tests-<date>.txt ; created ids: ~/olog-test-ids.txt
+# Report: ~/rapids-selfchecks/olog-tests-<date>.txt ; ids: ~/rapids-selfchecks/olog-test-ids.txt
 #
 # Test data are created in logbook and tag 'rapids-test' and are kept on
 # purpose, for the persistence tests after update.sh and reboot.
@@ -32,8 +32,10 @@ set -u
 URL=${OLOG_URL:-http://localhost:8080/Olog}
 USER_NAME=${OLOG_USER:-admin}
 SCRIPTS=/opt/epics-tools/olog/scripts
-REPORT=~/olog-tests-$(date +%Y%m%d-%H%M).txt
-IDS=~/olog-test-ids.txt
+SELFCHECK_DIR="${RAPIDS_SELFCHECK_DIR:-$HOME/rapids-selfchecks}"
+mkdir -p "$SELFCHECK_DIR" 2>/dev/null
+REPORT="$SELFCHECK_DIR/olog-tests-$(date +%Y%m%d-%H%M).txt"
+IDS="$SELFCHECK_DIR/olog-test-ids.txt"
 RUN=$(date +%Y%m%d%H%M%S)
 DO_RESTART=yes
 for a in "$@"; do
