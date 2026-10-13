@@ -95,3 +95,7 @@ Things that are genuinely open, not hidden:
 - **Ubuntu/Debian support** — RAPIDS is intensively tested on AlmaLinux/Rocky today; porting to Debian-family systems is a real possibility on request from the community, not a closed door.
 - **Olog and Archiver Appliance backup** — neither currently has a built-in backup mechanism; see each manual's own notes for the reasoning and what a correct implementation would need.
 - Questions, issues, and collaboration are welcome — open an issue on this repository.
+
+## AI Assistance Disclosure
+
+Parts of RAPIDS — code, Ansible roles, documentation, and this README — were developed with the assistance of AI tools. Every AI-assisted change was reviewed, tested, and validated against real EPICS deployments (ANTHEM, Nuclei, and the from-scratch VM installs described throughout `doc/rapids/`) before being accepted; AI assistance sped up the work, it did not replace the verification.
