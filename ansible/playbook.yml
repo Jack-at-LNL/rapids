@@ -181,6 +181,8 @@
         - name: Run Bluesky role
           include_role:
             name: bluesky
+            apply:
+              tags: bluesky
 
     - name: Phoebus
       include_role:
