@@ -29,12 +29,17 @@ m_stream: true
 # archiver_client_config: true  # Phoebus: Archiver data (Ctrl+D)  - needs phoebus: true
 
 # Project branding
-# AVOID '-' AND ':' IN rapids_project_name AND rapids_instance_name (below):
-# the Archiver Appliance converts both characters into directory separators
-# on disk (ConvertPVNameToKey). "ANTHEM-SPES" is stored as a literal nested
-# folder ANTHEM/SPES, not as one name - harmless, but confusing to browse.
-# Use a space, underscore, or just run the words together instead.
-# rapids_project_name: "My Project"
+# AVOID '-', ':', AND SPACES IN rapids_project_name AND
+# rapids_instance_name (below). '-' and ':' become directory separators on
+# disk (the Archiver Appliance's ConvertPVNameToKey) - "ANTHEM-SPES" is
+# stored as a literal nested folder ANTHEM/SPES, not as one name - harmless,
+# but confusing to browse. A space is worse: confirmed directly, a space in
+# either name breaks the Archiver healthcheck's own test PVs outright - the
+# Archiver's REST API cannot resolve a PV name containing an unencoded space
+# ("archive request ... no answer from the management interface"), so every
+# downstream check fails. EPICS PV names are conventionally space-free by
+# community convention anyway - use an underscore or just run words together.
+# rapids_project_name: "MyProject"
 # rapids_author_name: "Your Name"
 # rapids_author_email: "your.email@example.org"
 # rapids_institution: "Your Institution"

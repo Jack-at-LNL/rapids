@@ -63,7 +63,7 @@ The capabilities this fork adds on top of Training-VM. Each is documented in its
 ## 5. Project branding
 
 ```yaml
-# rapids_project_name: "My Project"
+# rapids_project_name: "MyProject"
 # rapids_author_name: "Your Name"
 # rapids_author_email: "your.email@example.org"
 # rapids_institution: "Your Institution"
@@ -71,7 +71,7 @@ The capabilities this fork adds on top of Training-VM. Each is documented in its
 
 This is what makes an installation genuinely *yours* rather than a generic default — it appears on the landing page, in the Olog's first auto-created logbook, and in the generated documentation footers. Fill these in for every real deployment.
 
-**Avoid `-` and `:` in `rapids_project_name` and `rapids_instance_name` (below).** The Archiver Appliance's `ConvertPVNameToKey` converts both characters into directory separators on disk — `"ANTHEM-SPES"` is stored as a literal nested folder `ANTHEM/SPES`, not as one name. Harmless, but confusing to browse later. Use a space, an underscore, or just run the words together instead.
+**Avoid `-`, `:`, and spaces in `rapids_project_name` and `rapids_instance_name` (below).** `-` and `:` become directory separators on disk (the Archiver Appliance's `ConvertPVNameToKey`) — `"ANTHEM-SPES"` is stored as a literal nested folder `ANTHEM/SPES`, not as one name. Harmless, but confusing to browse later. A space is worse: confirmed directly, a space in either name breaks the Archiver healthcheck's own test PVs outright — the Archiver's REST API cannot resolve a PV name containing an unencoded space, so every downstream check in that healthcheck fails. EPICS PV names are conventionally space-free by community convention anyway — use an underscore, or just run the words together.
 
 ## 6. Instance name
 
