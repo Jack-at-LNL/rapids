@@ -25,6 +25,26 @@
             - vars/arch
       tags: always
 
+    - name: RAPIDS sanity check - local.yml must be the real RAPIDS configuration
+      ansible.builtin.assert:
+        that:
+          - rapids_config_version is defined
+        fail_msg: >-
+          rapids_config_version is not defined, which means local.yml is not
+          RAPIDS's own configuration file - most likely it is still (or has
+          been silently reset to) the generic upstream training-collection
+          sample. This can happen if vm-setup/ansible/vars/local.yml ever
+          goes missing (e.g. after a git pull removes a file that used to
+          occupy that path) - update.sh then silently re-creates its symlink
+          pointing at an empty outer local.yml, and every RAPIDS-specific
+          role below just skips with no error. Fix: from the collection
+          directory, run
+            cp vm-setup/ansible/vars/local.yml.sample local.yml
+          then re-apply your project's settings in local.yml before
+          re-running update.sh.
+        success_msg: "RAPIDS sanity check passed (local.yml is the real RAPIDS configuration)."
+      tags: always
+
   tasks:
     - name: Check that distro has been identified
       ansible.builtin.fail:

@@ -2,6 +2,17 @@
 #
 # Copy this file to 'local.yml' (which is gitignored) and change as you like
 
+# RAPIDS sanity-check marker - do not remove. playbook.yml asserts this is
+# defined before running any role, specifically to catch the case where
+# local.yml has silently become the generic upstream training-collection
+# sample instead of RAPIDS's own (this can happen if
+# vm-setup/ansible/vars/local.yml ever goes missing - e.g. a git pull
+# removes a file that used to occupy that path - update.sh then silently
+# recreates its symlink pointing at an empty outer local.yml). If you see
+# an error naming this variable, re-copy this sample to local.yml and
+# re-apply your settings.
+rapids_config_version: 1
+
 # You can also create other setup files, e.g., 'myVM.yml'
 # and specify it on the ansible-playbook command line:
 # ansible-playbook ... playbook.yml -e @vars/myVM.yml
