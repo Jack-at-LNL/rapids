@@ -65,10 +65,10 @@ cd training
 #    settings live in vm-setup/ansible/vars/local.yml.sample instead.)
 #
 #    Want everything switched on in one go instead of hand-picking
-#    components? Copy local.full.stack.istallation.yml (repo root) to
+#    components? Copy vm-setup/local.full.stack.istallation.yml to
 #    local.yml instead - a ready-to-play, full-stack showcase install.
-#    See doc/rapids/local-yml-guide.md for a full annotated reference
-#    either way.
+#    See vm-setup/doc/rapids/local-yml-guide.md for a full annotated
+#    reference either way.
 cp vm-setup/ansible/vars/local.yml.sample local.yml
 nano local.yml
 
