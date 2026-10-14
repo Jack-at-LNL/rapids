@@ -24,6 +24,15 @@ ansible-vault encrypt_string 'YourSecurePassword' --name 'olog_admin_password' >
 ansible-vault encrypt_string 'AnotherPassword' --name 'olog_user1_password' >> local.yml
 ```
 
+**Two different secrets — don't mix them up.** Running `ansible-vault encrypt_string` itself prompts you for a *New Vault password* (and a confirmation) before it encrypts anything — that prompt is the **vault password**, the encryption key for the ciphertext block it's about to produce. It is independent from `'YourSecurePassword'` above, which is the **actual Olog login password** for that account. You choose both, and they don't have to match:
+
+| Secret | Where you set it | Where it's used |
+|---|---|---|
+| Vault password (encryption key) | At the `ansible-vault encrypt_string` prompt, right now | Typed back at `update.sh --ask-vault-pass`, every install or re-install — only to unlock `local.yml` |
+| Olog admin password | The string you pass to `encrypt_string` (`'YourSecurePassword'` above) | Typed into the Olog login page afterward, as the admin account's real password |
+
+If you forget which is which: the vault password never logs you into anything — it only decrypts `local.yml` for Ansible to read. The Olog password is the one you'll actually type into a browser.
+
 Then in `local.yml`:
 ```yaml
 olog_users:

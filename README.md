@@ -58,24 +58,44 @@ EOF
 eval "$(curl -L https://raw.githubusercontent.com/Jack-at-LNL/rapids/rapids/bootstrap.sh)"
 cd training
 
-# 5. Replace the generic default local.yml with RAPIDS's own sample, then
-#    edit it: project name, institution, contact person, and which
-#    components (above) to enable. (The training-collection repo this is
-#    based on ships its own generic local.yml at this path - RAPIDS's real
-#    settings live in vm-setup/ansible/vars/local.yml.sample instead.)
+# 5. Pick ONE of the two paths below.
 #
-#    Want everything switched on in one go instead of hand-picking
-#    components? Copy vm-setup/local.full.stack.istallation.yml to
-#    local.yml instead - a ready-to-play, full-stack showcase install.
-#    See vm-setup/doc/rapids/local-yml-guide.md for a full annotated
-#    reference either way.
-cp vm-setup/ansible/vars/local.yml.sample local.yml
-nano local.yml
+#    PATH A - just show me RAPIDS working (recommended for a first
+#    install): every component switched on, nothing to decide, a
+#    demo password already set and documented inside the file itself.
+cp vm-setup/local.full.stack.istallation.yml local.yml
+#
+#    PATH B - your own real project: start blank, choose only the
+#    components you need, set your own identity and your own Olog
+#    admin password. Read the password note in step 6 FIRST if you
+#    go this way - it explains two secrets people often confuse.
+#    cp vm-setup/ansible/vars/local.yml.sample local.yml
+#    nano local.yml
 
-# 6. Install (--ask-vault-pass decrypts local.yml's vault-encrypted
-#    secrets - e.g. olog_admin_password - into memory for this run only;
-#    they are never written back to disk in clear text. Omit the flag
-#    only if you didn't vault-encrypt anything in local.yml.)
+# 6. Install.
+#
+#    If local.yml contains a vault-encrypted secret (the Olog admin
+#    password), update.sh needs a VAULT PASSWORD to read it. The vault
+#    password and the Olog admin password are TWO DIFFERENT SECRETS:
+#
+#      - PATH A: the vault password is fixed and written inside
+#        local.full.stack.istallation.yml itself - look for the line
+#        Vault password for olog_admin_password below. Type exactly
+#        that when asked.
+#
+#      - PATH B: nothing is set until you create it. Running
+#          ansible-vault encrypt_string 'YourOlogAdminPassword' \
+#            --name 'olog_admin_password' >> local.yml
+#        itself asks you to set a New Vault password right there -
+#        that's secret #1, the encryption key, chosen by YOU right
+#        then. 'YourOlogAdminPassword' is secret #2, the real Olog
+#        login. They don't have to match. If you didn't enable
+#        olog_server at all, skip this and omit --ask-vault-pass below.
+#
+#    Either way, when update.sh asks for the Vault password, always
+#    type secret #1 (the encryption key) - never the Olog login
+#    password. See doc/rapids/olog-server.md section 2 for the full
+#    worked example.
 vm-setup/update.sh --ask-vault-pass
 ```
 
