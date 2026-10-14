@@ -1,0 +1,59 @@
+# =============================================================================
+# RAPIDS - full-stack showcase installation
+#
+# Every component RAPIDS can install, switched on at once. Copy this file to
+# `local.yml` in the collection directory (next to update.sh) to install a
+# complete, working, end-to-end RAPIDS demonstration box with one command:
+#
+#   cp local.full.stack.istallation.yml local.yml
+#   ./vm-setup/update.sh --ask-vault-pass
+#
+# Vault password for olog_admin_password below: PublicationTest2026!
+# (This is a demonstration credential. Generate your own with
+#  `ansible-vault encrypt_string` before using this box for anything real -
+#  see doc/rapids/olog-server.md section 2.)
+#
+# For a production install scoped to only what your project actually needs,
+# start from `vm-setup/ansible/vars/local.yml.sample` instead, and see
+# doc/rapids/local-yml-guide.md for a full annotated reference.
+# =============================================================================
+rapids_config_version: 1
+m_base: true
+m_asyn: true
+m_stream: true
+m_autosave: true
+m_calc: true
+phoebus: true
+archiver_appliance: true
+system_time: true
+olog_server: true
+olog_client_config: true
+archiver_client_config: true
+rapids_project_name: "ANTHEM"
+rapids_author_name: "Mauro Giacchini"
+rapids_author_email: "mauro.giacchini@lnl.infn.it"
+rapids_institution: "INFN Laboratori Nazionali di Legnaro"
+rapids_instance_name: "VM101"
+rapids_procserv: true
+rapids_procserv_selfcheck: true
+rapids_firewall_extra_ports: ['5065/udp']
+olog_initial_logbooks:
+  - { name: "{{ rapids_project_name }}", owner: "olog-logs", state: "Active" }
+  - { name: "operations", owner: "olog-logs", state: "Active" }
+  - { name: "commissioning", owner: "olog-logs", state: "Active" }
+  - { name: "maintenance", owner: "olog-logs", state: "Active" }
+  - { name: "faults", owner: "olog-logs", state: "Active" }
+olog_initial_tags:
+  - { name: "follow-up" }
+  - { name: "resolved" }
+  - { name: "reference" }
+ntp_servers:
+  - ntp.example.org
+  - pool.ntp.org
+olog_admin_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          38613633613133366138636266333365633931353563653135663533616630363332653932323536
+          3136393135613232303263363934663232656334653933620a656531346232343731373030393864
+          30326231373537343630323038383533656464626639313134626462636638323963333139623131
+          3263623232386261310a663565313039306464663539363530643432323363343031316534373137
+          34663835653837386338623061633331356332623463316631353166343839653733
