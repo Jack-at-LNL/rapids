@@ -99,7 +99,6 @@ RAPIDS does not carry a formal license file, matching the upstream [Training-VM]
 Things that are genuinely open, not hidden:
 
 - **Ubuntu/Debian support** — RAPIDS is intensively tested on AlmaLinux today (Rocky Linux is expected to work, given training-vm's own heritage, but hasn't been verified yet for RAPIDS); porting to Debian-family systems is a real possibility on request from the community, not a closed door.
-- **Olog and Archiver Appliance backup** — neither currently has a built-in backup mechanism; see each manual's own notes for the reasoning and what a correct implementation would need.
 - Questions, issues, and collaboration are welcome — open an issue on this repository.
 
 ## AI Assistance Disclosure
