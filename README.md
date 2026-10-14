@@ -16,7 +16,7 @@ Declare your project's own identity — name, institution, contact person — an
 
 RAPIDS is a fork of the [EPICS Training-VM](https://github.com/epics-training/training-vm) project, and it keeps that heritage deliberately: the same scripted, reproducible, from-source philosophy that makes Training-VM a good *teaching* tool is exactly what makes RAPIDS a trustworthy foundation for a *production* one.
 
-**Tested today on AlmaLinux/Rocky (RPM-based RHEL derivatives).** This is a real constraint, not an assumption baked into the design — porting to Ubuntu/Debian is a genuinely plausible next step, and one we'd actively take on if the community asks for it. If that's you, open an issue and say so.
+**Tested today on AlmaLinux (RPM-based RHEL derivative).** RAPIDS itself has been developed and validated exclusively on AlmaLinux. Rocky Linux is almost certainly compatible — training-vm, the upstream project RAPIDS is forked from, is itself tested on Rocky — but RAPIDS has not yet been verified there, so treat Rocky as untested rather than unsupported. Porting to Ubuntu/Debian is a separate, genuinely plausible next step, and one we'd actively take on if the community asks for it. If that's you, open an issue and say so.
 
 ## What you get
 
@@ -37,7 +37,7 @@ See [`doc/rapids/architecture.md`](doc/rapids/architecture.md) for how these fit
 
 ## 5-minute quickstart
 
-Starting from a vanilla AlmaLinux or Rocky Linux box, logged in as a user named exactly `epics-dev` with sudo rights (create it first if the box doesn't have one yet — this is Training-VM's own convention, and several paths and systemd services further down assume this exact username):
+Starting from a vanilla AlmaLinux box (RAPIDS's tested target — Rocky Linux is expected to work too, given training-vm's own heritage, but has not yet been verified for RAPIDS itself), logged in as a user named exactly `epics-dev` with sudo rights (create it first if the box doesn't have one yet — this is Training-VM's own convention, and several paths and systemd services further down assume this exact username):
 
 ```bash
 # 1. Install EPEL (needed by some RAPIDS components)
@@ -63,6 +63,12 @@ cd training
 #    components (above) to enable. (The training-collection repo this is
 #    based on ships its own generic local.yml at this path - RAPIDS's real
 #    settings live in vm-setup/ansible/vars/local.yml.sample instead.)
+#
+#    Want everything switched on in one go instead of hand-picking
+#    components? Copy local.full.stack.istallation.yml (repo root) to
+#    local.yml instead - a ready-to-play, full-stack showcase install.
+#    See doc/rapids/local-yml-guide.md for a full annotated reference
+#    either way.
 cp vm-setup/ansible/vars/local.yml.sample local.yml
 nano local.yml
 
@@ -92,10 +98,10 @@ RAPIDS does not carry a formal license file, matching the upstream [Training-VM]
 
 Things that are genuinely open, not hidden:
 
-- **Ubuntu/Debian support** — RAPIDS is intensively tested on AlmaLinux/Rocky today; porting to Debian-family systems is a real possibility on request from the community, not a closed door.
+- **Ubuntu/Debian support** — RAPIDS is intensively tested on AlmaLinux today (Rocky Linux is expected to work, given training-vm's own heritage, but hasn't been verified yet for RAPIDS); porting to Debian-family systems is a real possibility on request from the community, not a closed door.
 - **Olog and Archiver Appliance backup** — neither currently has a built-in backup mechanism; see each manual's own notes for the reasoning and what a correct implementation would need.
 - Questions, issues, and collaboration are welcome — open an issue on this repository.
 
 ## AI Assistance Disclosure
 
-Parts of RAPIDS — code, Ansible roles, documentation, and this README — were developed with the assistance of AI tools. Every AI-assisted change was reviewed, tested, and validated against real EPICS deployments (ANTHEM, Nuclei, and the from-scratch VM installs described throughout `doc/rapids/`) before being accepted; AI assistance sped up the work, it did not replace the verification.
+Parts of RAPIDS — code, Ansible roles, documentation, and this README — were developed with the assistance of AI tools.

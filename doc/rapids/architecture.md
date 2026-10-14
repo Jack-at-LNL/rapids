@@ -42,7 +42,7 @@ A running control system <- services active, firewalled, self-tested
 
 ## What RAPIDS deliberately does *not* do
 
-It does not manage your production IOCs' lifecycle — `rapids_procserv` installs the tool (procServ + `manage-procs`) and proves it works, then steps back entirely; you create and manage your own IOCs by hand, exactly as on any EPICS workstation. It does not back up Olog or the Archiver Appliance's data today — that gap is tracked, not hidden (see each manual's own notes). It is tested, today, on AlmaLinux/Rocky (RPM-based RHEL derivatives) only.
+It does not manage your production IOCs' lifecycle — `rapids_procserv` installs the tool (procServ + `manage-procs`) and proves it works, then steps back entirely; you create and manage your own IOCs by hand, exactly as on any EPICS workstation. It does not back up Olog or the Archiver Appliance's data today — that gap is tracked, not hidden (see each manual's own notes). It is tested, today, on AlmaLinux (RPM-based RHEL derivative) only — Rocky Linux is expected to work, given training-vm's own heritage, but has not yet been verified for RAPIDS itself.
 
 ## Where to go next
 
